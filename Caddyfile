@@ -1,0 +1,6 @@
+# Caddy 会自动为该域名申请并续期 HTTPS 证书
+# 需保证：域名解析到本机、80/443 端口放行
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:3000
+}

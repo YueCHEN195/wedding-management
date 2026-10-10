@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b22222" />
+      <stop offset="1" stop-color="#7a1616" />
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#g)" />
+  <text x="540" y="760" text-anchor="middle" font-size="220" fill="#c8a45c">囍</text>
+  <text x="540" y="980" text-anchor="middle" font-size="72" fill="#f7f3ea">Demo 请柬封面</text>
+  <text x="540" y="1080" text-anchor="middle" font-size="40" fill="#e8d9b0">请替换为真实图片</text>
+</svg>

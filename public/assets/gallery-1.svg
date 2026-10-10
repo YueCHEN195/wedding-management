@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1440" viewBox="0 0 1080 1440">
+  <rect width="1080" height="1440" fill="#f7f3ea" />
+  <rect x="40" y="40" width="1000" height="1360" fill="none" stroke="#c8a45c" stroke-width="4" />
+  <text x="540" y="700" text-anchor="middle" font-size="64" fill="#b22222">Demo 相册图</text>
+  <text x="540" y="800" text-anchor="middle" font-size="36" fill="#2b2b2b">请替换为真实照片</text>
+</svg>

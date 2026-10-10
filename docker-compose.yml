@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_PATH=/data/wedding.db
+      - JWT_SECRET=${JWT_SECRET}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - STAFF_USERNAME=${STAFF_USERNAME}
+      - STAFF_PASSWORD=${STAFF_PASSWORD}
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

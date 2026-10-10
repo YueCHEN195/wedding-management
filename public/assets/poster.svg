@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <linearGradient id="p" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7f3ea" />
+      <stop offset="1" stop-color="#efe6cf" />
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#p)" />
+  <rect x="48" y="48" width="984" height="1824" fill="none" stroke="#b22222" stroke-width="6" />
+  <text x="540" y="360" text-anchor="middle" font-size="180" fill="#b22222">囍</text>
+  <text x="540" y="560" text-anchor="middle" font-size="80" fill="#2b2b2b">张伟 &amp; 李娜</text>
+  <text x="540" y="680" text-anchor="middle" font-size="44" fill="#c8a45c">2026.12.20</text>
+  <text x="540" y="860" text-anchor="middle" font-size="40" fill="#2b2b2b">诚挚邀请您见证我们的幸福时刻</text>
+  <!-- 二维码将合成在下方区域 -->
+  <rect x="380" y="1560" width="300" height="300" fill="none" stroke="#c8a45c" stroke-dasharray="8 8" />
+  <text x="540" y="1730" text-anchor="middle" font-size="28" fill="#999">二维码位置（demo）</text>
+</svg>

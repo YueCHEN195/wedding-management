@@ -1,0 +1,160 @@
+/** 共享类型与枚举（前后端通用） */
+
+export type Role = 'admin' | 'staff';
+
+export type GuestStatus = 'pending' | 'sent' | 'viewed' | 'rsvp';
+export type Side = 'male' | 'female' | 'both';
+export type Attending = 'yes' | 'no' | 'maybe';
+export type RsvpSource = 'link' | 'universal';
+export type CheckinSource = 'self' | 'manual';
+export type CheckinStatus = 'pending' | 'confirmed';
+export type GiftMethod = 'wechat' | 'alipay' | 'cash';
+
+export interface SessionUser {
+  id: number;
+  username: string;
+  role: Role;
+}
+
+export interface ApiErrorBody {
+  code: string;
+  message: string;
+}
+
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: ApiErrorBody };
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/* ---------- DTO ---------- */
+
+export interface GuestDTO {
+  id: number;
+  name: string;
+  salutation: string | null;
+  phone: string | null;
+  groupName: string | null;
+  side: Side | null;
+  status: GuestStatus;
+  note: string | null;
+  inviteToken: string;
+  inviteUrl: string;
+  invitedAt: number | null;
+  viewedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+  attending: Attending | null;
+}
+
+export interface GuestDetailDTO {
+  guest: GuestDTO;
+  rsvp: RsvpDTO | null;
+  checkins: CheckinDTO[];
+  gifts: GiftDTO[];
+  giftTotal: number;
+}
+
+export interface RsvpDTO {
+  id: number;
+  guestId: number | null;
+  guestName: string;
+  attending: Attending;
+  headcount: number;
+  childrenCount: number;
+  message: string | null;
+  source: RsvpSource;
+  submittedAt: number;
+  updatedAt: number;
+}
+
+export interface RsvpSummary {
+  yes: number;
+  no: number;
+  maybe: number;
+  headcountYes: number;
+  childrenYes: number;
+  total: number;
+}
+
+export interface RsvpListDTO {
+  items: RsvpDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+  summary: RsvpSummary;
+}
+
+export interface CheckinDTO {
+  id: number;
+  guestId: number | null;
+  guestName: string;
+  source: CheckinSource;
+  status: CheckinStatus;
+  note: string | null;
+  submittedAt: number;
+  confirmedAt: number | null;
+  giftAmount: number | null;
+  giftMethod: GiftMethod | null;
+  attending: Attending | null;
+}
+
+export interface GiftDTO {
+  id: number;
+  guestId: number | null;
+  guestName: string;
+  amount: number;
+  method: GiftMethod;
+  note: string | null;
+  checkinId: number | null;
+  recordedAt: number;
+}
+
+export interface GiftSummary {
+  total: number;
+  count: number;
+  byMethod: { method: GiftMethod; amount: number; count: number }[];
+}
+
+export interface GiftListDTO {
+  items: GiftDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+  /** 仅管理员返回；工作人员为 null */
+  summary: GiftSummary | null;
+}
+
+export interface StatsSummary {
+  guestTotal: number;
+  invitedCount: number;
+  rsvpCount: number;
+  attendingHeadcount: number;
+  checkinCount: number;
+  pendingCheckinCount: number;
+  giftTotal: number;
+  giftCount: number;
+}
+
+export interface StatsCharts {
+  rsvp: { yes: number; no: number; maybe: number };
+  giftByMethod: { method: GiftMethod; amount: number; count: number }[];
+  guestBySide: { side: string; count: number }[];
+  guestByGroup: { group: string; count: number }[];
+}
+
+export interface InviteData {
+  guestName: string;
+  salutation: string | null;
+  rsvp: RsvpDTO | null;
+}
+
+export interface ImportResult {
+  created: number;
+  failed: { row: number; reason: string }[];
+}

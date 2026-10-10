@@ -1,0 +1,5 @@
+- generic [ref=e7]:
+  - generic [ref=e8]: 囍
+  - heading "张伟 & 李娜" [level=1] [ref=e9]
+  - generic [ref=e10]: 2026/12/20
+  - button "打开请柬" [ref=e12] [cursor=pointer]

@@ -1,0 +1,9 @@
+- generic [ref=f2e4]:
+  - generic [ref=f2e5]: 囍
+  - heading "张伟 & 李娜" [level=1] [ref=f2e6]
+  - paragraph [ref=f2e7]: 现场签到
+  - generic [ref=f2e8]:
+    - generic [ref=f2e12]: ✓
+    - heading "已提交" [level=2] [ref=f2e13]
+    - paragraph [ref=f2e14]: 请等待工作人员确认，感谢您的到来！
+    - button "再签一位" [ref=f2e15] [cursor=pointer]

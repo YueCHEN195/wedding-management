@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+
+:root {
+  --brand-red: #b22222;
+  --brand-gold: #c8a45c;
+  --brand-ink: #2b2b2b;
+  --brand-paper: #f7f3ea;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
