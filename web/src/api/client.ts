@@ -1,5 +1,9 @@
 import type {
   CheckinDTO,
+  LifecycleEntity,
+  LifecycleAction,
+  LifecyclePreview,
+  OperationLogDTO,
   NewCheckinGuest,
   GuestCandidate,
   PendingCheckinDTO,
@@ -76,6 +80,7 @@ function qs(params: object): string {
 }
 
 export interface GuestListParams {
+  archived?: 'only' | 'all';
   keyword?: string;
   status?: GuestStatus;
   groupName?: string;
@@ -97,7 +102,6 @@ export const api = {
       apiFetch<GuestDTO>('/api/guests', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: number, data: Partial<GuestDTO>) =>
       apiFetch<GuestDTO>(`/api/guests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    remove: (id: number) => apiFetch<boolean>(`/api/guests/${id}`, { method: 'DELETE' }),
     markSent: (id: number) => apiFetch<GuestDTO>(`/api/guests/${id}/mark-sent`, { method: 'POST' }),
     detail: (id: number) => apiFetch<GuestDetailDTO>(`/api/guests/${id}/detail`),
     import: async (file: File): Promise<ImportResult> => {
@@ -121,6 +125,13 @@ export const api = {
       apiFetch<RsvpDTO>(`/api/rsvps/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
+  lifecycle: {
+    preview: (entity: LifecycleEntity, id: number, action: LifecycleAction) =>
+      apiFetch<LifecyclePreview>(`/api/lifecycle/${entity}/${id}/preview${qs({ action })}`),
+    apply: (entity: LifecycleEntity, id: number, data: { action: LifecycleAction; reason: string; token: string }) =>
+      apiFetch<boolean>(`/api/lifecycle/${entity}/${id}`, { method: 'POST', body: JSON.stringify(data) }),
+    history: (entity: LifecycleEntity, id: number) => apiFetch<OperationLogDTO[]>(`/api/lifecycle/${entity}/${id}/history`),
+  },
   checkins: {
     list: (p: { status?: CheckinStatus; keyword?: string; page?: number; pageSize?: number }) =>
       apiFetch<Paginated<CheckinDTO>>(`/api/checkins${qs(p)}`),
@@ -130,18 +141,16 @@ export const api = {
       apiFetch<CheckinDTO & { duplicate: boolean }>('/api/checkins', { method: 'POST', body: JSON.stringify(data) }),
     confirm: (id: number, data: { guestId?: number; newGuest?: NewCheckinGuest; amount: number; method: GiftMethod; note?: string }) =>
       apiFetch<CheckinDTO>(`/api/checkins/${id}/confirm`, { method: 'PATCH', body: JSON.stringify(data) }),
-    remove: (id: number) => apiFetch<boolean>(`/api/checkins/${id}`, { method: 'DELETE' }),
     qrUrl: () => '/api/checkin/qr',
   },
 
   gifts: {
-    list: (p: { method?: GiftMethod; keyword?: string; page?: number; pageSize?: number }) =>
+    list: (p: { state?: 'voided' | 'all'; method?: GiftMethod; keyword?: string; page?: number; pageSize?: number }) =>
       apiFetch<GiftListDTO>(`/api/gifts${qs(p)}`),
     create: (data: { guestName: string; guestId?: number; amount: number; method: GiftMethod; note?: string }) =>
       apiFetch<GiftDTO>('/api/gifts', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: number, data: Partial<GiftDTO>) =>
       apiFetch<GiftDTO>(`/api/gifts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    remove: (id: number) => apiFetch<boolean>(`/api/gifts/${id}`, { method: 'DELETE' }),
   },
 
   stats: {

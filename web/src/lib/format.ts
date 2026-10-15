@@ -21,7 +21,7 @@ export const ATTENDING_COLOR: Record<Attending, string> = { yes: 'green', no: 'r
 
 export const METHOD_LABEL: Record<GiftMethod, string> = { wechat: '微信', alipay: '支付宝', cash: '现金' };
 
-export const CHECKIN_STATUS_LABEL: Record<CheckinStatus, string> = { pending: '待审核', confirmed: '已确认' };
+export const CHECKIN_STATUS_LABEL: Record<CheckinStatus, string> = { pending: '待审核', confirmed: '已确认', rejected: '已驳回', cancelled: '已撤销' };
 
 /** 分 → 元字符串 */
 export function yuan(cents: number | null | undefined): string {

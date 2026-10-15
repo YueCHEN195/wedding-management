@@ -13,6 +13,7 @@ import { giftRoutes } from './routes/gifts';
 import { statsRoutes } from './routes/stats';
 import { exportRoutes } from './routes/export';
 import { inviteRoutes } from './routes/invite';
+import { lifecycleRoutes } from './routes/lifecycle';
 import { publicCheckinRoutes } from './routes/checkin';
 
 // 启动时确保数据库结构最新（失败则直接退出，避免"进程活着但服务不可用"）
@@ -24,9 +25,14 @@ try {
 }
 
 const app = new Hono();
+app.onError((err, c) => {
+  console.error('[server] request failed:', err);
+  return c.json({ ok: false, error: { code: 'INTERNAL', message: '操作失败，请稍后重试；如反复出现，请联系管理员' } }, 500);
+});
 
 app.use('*', logger());
 
+app.route('/api/lifecycle', lifecycleRoutes);
 app.route('/api/health', healthRoutes);
 app.route('/api/auth', authRoutes);
 app.route('/api/guests', guestRoutes);

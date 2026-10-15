@@ -24,7 +24,7 @@ function storeAttempt(value: CheckinAttempt | null) {
 export function CheckinPage() {
   const [attempt, setAttempt] = useState<CheckinAttempt | null>(readAttempt);
   const [name, setName] = useState(attempt?.name ?? '');
-  const [state, setState] = useState<'idle' | 'saving' | 'done' | 'dup' | 'confirmed'>('idle');
+  const [state, setState] = useState<'idle' | 'saving' | 'done' | 'dup' | 'confirmed' | 'inactive'>('idle');
   const [error, setError] = useState<string | null>(null);
   const saving = useRef(false);
 
@@ -43,7 +43,7 @@ export function CheckinPage() {
     setState('saving');
     try {
       const r = await api.publicCheckin.self(n, current.submissionKey);
-      setState(r.status === 'confirmed' ? 'confirmed' : r.duplicate ? 'dup' : 'done');
+      setState(r.status === 'rejected' || r.status === 'cancelled' ? 'inactive' : r.status === 'confirmed' ? 'confirmed' : r.duplicate ? 'dup' : 'done');
     } catch (e) {
       setState('idle');
       setError(e instanceof ApiError ? e.message : '提交失败，请重试');
@@ -72,7 +72,7 @@ export function CheckinPage() {
       </h1>
       <p style={{ color: GOLD, marginBottom: 32 }}>现场签到</p>
 
-      {state === 'done' || state === 'dup' || state === 'confirmed' ? (
+      {state === 'done' || state === 'dup' || state === 'confirmed' || state === 'inactive' ? (
         <div
           style={{
             background: '#f7f3ea',
@@ -85,9 +85,9 @@ export function CheckinPage() {
         >
           <div style={{ fontSize: 48, color: '#2e7d32' }}>{state === 'done' ? '✓' : '☑'}</div>
           <p style={{ margin: '12px 0 0' }}>{attempt?.name}</p>
-          <h2 style={{ margin: '12px 0' }}>{state === 'confirmed' ? '已完成签到' : state === 'dup' ? '您已提交过' : '已提交'}</h2>
+          <h2 style={{ margin: '12px 0' }}>{state === 'inactive' ? '此登记已驳回或撤销' : state === 'confirmed' ? '已完成签到' : state === 'dup' ? '您已提交过' : '已提交'}</h2>
           <p style={{ color: '#666', margin: 0 }}>
-            {state === 'confirmed' ? '工作人员已确认您的签到，无需再次提交。感谢您的到来！' : '请等待工作人员确认，感谢您的到来！'}
+            {state === 'inactive' ? '请联系现场工作人员核对；如需重新登记，请使用下方按钮。' : state === 'confirmed' ? '工作人员已确认您的签到，无需再次提交。感谢您的到来！' : '请等待工作人员确认，感谢您的到来！'}
           </p>
           <button
             onClick={() => {

@@ -24,6 +24,7 @@ export const guests = sqliteTable('guests', {
   note: text('note'),
   invitedAt: integer('invited_at'),
   viewedAt: integer('viewed_at'),
+  archivedAt: integer('archived_at'),
   createdAt: integer('created_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
 });
@@ -55,7 +56,7 @@ export const checkins = sqliteTable('checkins', {
   source: text('source', { enum: ['self', 'manual'] })
     .notNull()
     .default('self'),
-  status: text('status', { enum: ['pending', 'confirmed'] })
+  status: text('status', { enum: ['pending', 'confirmed', 'rejected', 'cancelled'] })
     .notNull()
     .default('pending'),
   note: text('note'),
@@ -81,6 +82,7 @@ export const gifts = sqliteTable('gifts', {
   note: text('note'),
   checkinId: integer('checkin_id'),
   recordedAt: integer('recorded_at').notNull(),
+  voidedAt: integer('voided_at'),
 });
 
 export type UserRow = typeof users.$inferSelect;
@@ -88,3 +90,18 @@ export type GuestRow = typeof guests.$inferSelect;
 export type RsvpRow = typeof rsvps.$inferSelect;
 export type CheckinRow = typeof checkins.$inferSelect;
 export type GiftRow = typeof gifts.$inferSelect;
+
+/** 归档、恢复、驳回、撤销和作废的追加式操作记录。 */
+export const operationLogs = sqliteTable('operation_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  entity: text('entity', { enum: ['guest', 'checkin', 'gift'] }).notNull(),
+  entityId: integer('entity_id').notNull(),
+  action: text('action').notNull(),
+  reason: text('reason').notNull(),
+  actorId: integer('actor_id').notNull(),
+  actorName: text('actor_name').notNull(),
+  actorRole: text('actor_role').notNull(),
+  before: text('before_json').notNull(),
+  after: text('after_json').notNull(),
+  createdAt: integer('created_at').notNull(),
+});

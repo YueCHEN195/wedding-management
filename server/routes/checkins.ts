@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { and, desc, eq, like } from 'drizzle-orm';
 import { db } from '../db/client';
-import { checkins, gifts } from '../db/schema';
+import { checkins, gifts, guests } from '../db/schema';
 import { requireAuth, type AppEnv } from '../auth/middleware';
 import { checkinToDTO } from '../lib/dto';
 import { parsePage, str } from '../lib/util';
@@ -69,7 +69,7 @@ checkinRoutes.get('/pending', (c) => {
   const data = all.map((r) => {
     if (!candidatesByName.has(r.guestName)) candidatesByName.set(r.guestName, findGuestCandidates(r.guestName));
     const guestCandidates = candidatesByName.get(r.guestName)!;
-    return { ...checkinToDTO(r), guestCandidates, requiresGuestSelection: guestCandidates.length > 1 };
+    return { ...checkinToDTO(r), guestArchived: r.guestId != null && db.select().from(guests).where(eq(guests.id, r.guestId)).get()?.archivedAt != null, guestCandidates, requiresGuestSelection: guestCandidates.length > 1 };
   });
   return c.json({ ok: true, data });
 });
@@ -92,12 +92,5 @@ checkinRoutes.patch('/:id/confirm', async (c) => {
   return c.json({ ok: true, data: checkinToDTO(checkin, gift) });
 });
 
-/** 驳回（= 直接删除，含关联礼金） */
-checkinRoutes.delete('/:id', (c) => {
-  const id = Number(c.req.param('id'));
-  const existing = db.select().from(checkins).where(eq(checkins.id, id)).get();
-  if (!existing) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '提交不存在' } }, 404);
-  db.delete(gifts).where(eq(gifts.checkinId, id)).run();
-  db.delete(checkins).where(eq(checkins.id, id)).run();
-  return c.json({ ok: true, data: true });
-});
+/** 旧物理删除入口关闭，业务操作统一使用 lifecycle。 */
+checkinRoutes.delete('/:id', (c) => c.json({ ok: false, error: { code: 'DELETE_DISABLED', message: '不再支持永久删除，请刷新页面使用归档、驳回、撤销或作废，并核对影响范围' } }, 409));

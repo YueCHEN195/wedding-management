@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { and, desc, eq, like, or } from 'drizzle-orm';
-import { db } from '../db/client';
-import { rsvps } from '../db/schema';
+import { db, sqlite } from '../db/client';
+import { guests, rsvps } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { rsvpToDTO } from '../lib/dto';
 import { now, optionalStr, parsePage, str } from '../lib/util';
@@ -24,8 +24,10 @@ rsvpRoutes.get('/', (c) => {
   const all = db.select().from(rsvps).where(where).orderBy(desc(rsvps.submittedAt)).all();
   const items = all.slice(offset, offset + pageSize);
 
-  const summary = { yes: 0, no: 0, maybe: 0, headcountYes: 0, childrenYes: 0, total: all.length };
-  for (const r of all) {
+  const archivedIds = new Set(db.select().from(guests).all().filter((g) => g.archivedAt != null).map((g) => g.id));
+  const active = all.filter((r) => r.guestId == null || !archivedIds.has(r.guestId));
+  const summary = { yes: 0, no: 0, maybe: 0, headcountYes: 0, childrenYes: 0, total: active.length };
+  for (const r of active) {
     if (r.attending === 'yes') {
       summary.yes++;
       summary.headcountYes += r.headcount;
@@ -36,20 +38,28 @@ rsvpRoutes.get('/', (c) => {
 
   return c.json({
     ok: true,
-    data: { items: items.map(rsvpToDTO), total: all.length, page, pageSize, summary },
+    data: { items: items.map((r) => ({ ...rsvpToDTO(r), guestArchived: r.guestId != null && archivedIds.has(r.guestId) })), total: all.length, page, pageSize, summary },
   });
 });
 
 rsvpRoutes.patch('/:id', requireAdmin, async (c) => {
   const id = Number(c.req.param('id'));
-  const existing = db.select().from(rsvps).where(eq(rsvps.id, id)).get();
-  if (!existing) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '回执不存在' } }, 404);
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const patch: Partial<typeof rsvps.$inferInsert> = { updatedAt: now() };
   if ('attending' in body) patch.attending = str(body.attending) as Attending;
   if ('headcount' in body) patch.headcount = Math.max(0, Number(body.headcount) || 0);
   if ('childrenCount' in body) patch.childrenCount = Math.max(0, Number(body.childrenCount) || 0);
   if ('message' in body) patch.message = optionalStr(body.message);
-  const row = db.update(rsvps).set(patch).where(eq(rsvps.id, id)).returning().get();
+  const row = sqlite.transaction(() => {
+    const existing = db.select().from(rsvps).where(eq(rsvps.id, id)).get();
+    if (!existing) return null;
+    if (existing.guestId != null && db.select().from(guests).where(eq(guests.id, existing.guestId)).get()?.archivedAt != null) return null;
+    const updated = db.update(rsvps).set(patch).where(eq(rsvps.id, id)).returning().get();
+    if (existing.guestId != null) {
+      db.update(guests).set({ status: 'rsvp', updatedAt: patch.updatedAt }).where(eq(guests.id, existing.guestId)).run();
+    }
+    return updated;
+  }).immediate();
+  if (!row) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '回执不存在或宾客已归档，请先恢复宾客' } }, 404);
   return c.json({ ok: true, data: rsvpToDTO(row) });
 });

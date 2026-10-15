@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Col, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { RecordAction, RecordHistory, type RecordActionTarget } from './components/RecordAction';
 import { api, ApiError } from '@/api/client';
 import type { GiftDTO, GiftMethod } from '@shared/types';
 import { METHOD_LABEL, formatDateTime, yuan } from '@/lib/format';
 
 export function GiftsPage() {
   const qc = useQueryClient();
-  const [params, setParams] = useState<{ page: number; pageSize: number; method?: GiftMethod; keyword?: string }>({
+  const [params, setParams] = useState<{ page: number; pageSize: number; method?: GiftMethod; keyword?: string; state?: 'voided' | 'all' }>({
     page: 1,
     pageSize: 10,
   });
+  const [action, setAction] = useState<RecordActionTarget | null>(null);
+  const [historyId, setHistoryId] = useState<number | null>(null);
   const [editing, setEditing] = useState<GiftDTO | null>(null);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
@@ -41,17 +44,9 @@ export function GiftsPage() {
     onError: (e) => message.error(e instanceof ApiError ? e.message : '保存失败'),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: number) => api.gifts.remove(id),
-    onSuccess: () => {
-      message.success('已删除');
-      qc.invalidateQueries({ queryKey: ['gifts'] });
-      qc.invalidateQueries({ queryKey: ['stats'] });
-    },
-  });
-
   const columns: ColumnsType<GiftDTO> = [
-    { title: '姓名', dataIndex: 'guestName', width: 150 },
+    { title: '姓名', dataIndex: 'guestName', width: 150, render: (v, r) => <>{v} <small>#{r.id}{r.guestId != null ? ` · 宾客#${r.guestId}` : ''}</small></> },
+    { title: '状态', dataIndex: 'voidedAt', width: 90, render: (v) => <Tag color={v == null ? 'green' : 'default'}>{v == null ? '有效' : '已作废'}</Tag> },
     { title: '金额（元）', dataIndex: 'amount', width: 120, render: (v: number) => yuan(v) },
     { title: '方式', dataIndex: 'method', width: 100, render: (v: GiftMethod) => <Tag>{METHOD_LABEL[v]}</Tag> },
     { title: '备注', dataIndex: 'note', ellipsis: true, render: (v) => v ?? '-' },
@@ -64,7 +59,7 @@ export function GiftsPage() {
       width: 120,
       render: (_, r) => (
         <Space size="small">
-          <a
+          {r.voidedAt == null && <a
             onClick={() => {
               setEditing(r);
               setCreating(true);
@@ -72,10 +67,9 @@ export function GiftsPage() {
             }}
           >
             编辑
-          </a>
-          <Popconfirm title="确认删除？" onConfirm={() => remove.mutate(r.id)}>
-            <a style={{ color: '#cf1322' }}>删除</a>
-          </Popconfirm>
+          </a>}
+          <a onClick={() => setAction({ entity: 'gift', id: r.id, action: r.voidedAt == null ? 'void' : 'restore' })}>{r.voidedAt == null ? '作废' : '恢复'}</a>
+          <a onClick={() => setHistoryId(r.id)}>操作记录</a>
         </Space>
       ),
     });
@@ -84,10 +78,12 @@ export function GiftsPage() {
   return (
     <div>
       <Typography.Title level={4}>礼金管理</Typography.Title>
+      {action && <RecordAction key={`${action.id}-${action.action}`} target={action} onClose={() => setAction(null)} />}
+      {historyId != null && <RecordHistory entity="gift" id={historyId} onClose={() => setHistoryId(null)} />}
       {isAdmin && list.data?.summary && (
         <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col xs={12} md={6}><Card><Statistic title="礼金总额（元）" value={yuan(list.data.summary.total)} /></Card></Col>
-          <Col xs={12} md={6}><Card><Statistic title="笔数" value={list.data.summary.count} /></Card></Col>
+          <Col xs={12} md={6}><Card><Statistic title="有效礼金（当前筛选，元）" value={yuan(list.data.summary.total)} /></Card></Col>
+          <Col xs={12} md={6}><Card><Statistic title="有效笔数" value={list.data.summary.count} /></Card></Col>
           {list.data.summary.byMethod.map((m) => (
             <Col xs={12} md={6} key={m.method}>
               <Card><Statistic title={`${METHOD_LABEL[m.method]}（元）`} value={yuan(m.amount)} /></Card>
@@ -97,6 +93,7 @@ export function GiftsPage() {
       )}
 
       <Space style={{ marginBottom: 16 }} wrap>
+        <Select value={params.state ?? 'active'} style={{ width: 130 }} options={[{ value: 'active', label: '有效礼金' }, { value: 'voided', label: '已作废礼金' }, { value: 'all', label: '全部礼金' }]} onChange={(v) => setParams((p) => ({ ...p, state: v === 'voided' ? 'voided' : v === 'all' ? 'all' : undefined, page: 1 }))} />
         <Input.Search
           placeholder="姓名"
           allowClear

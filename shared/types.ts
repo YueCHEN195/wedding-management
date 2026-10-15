@@ -7,7 +7,7 @@ export type Side = 'male' | 'female' | 'both';
 export type Attending = 'yes' | 'no' | 'maybe';
 export type RsvpSource = 'link' | 'universal';
 export type CheckinSource = 'self' | 'manual';
-export type CheckinStatus = 'pending' | 'confirmed';
+export type CheckinStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
 /** 现场核对后明确新建的另一位宾客，分组用于同名辨识。 */
 export interface NewCheckinGuest {
   groupName: string;
@@ -57,6 +57,7 @@ export interface GuestDTO {
   inviteUrl: string;
   invitedAt: number | null;
   viewedAt: number | null;
+  archivedAt: number | null;
   createdAt: number;
   updatedAt: number;
   attending: Attending | null;
@@ -71,6 +72,7 @@ export interface GuestDetailDTO {
 }
 
 export interface RsvpDTO {
+  guestArchived?: boolean;
   id: number;
   guestId: number | null;
   guestName: string;
@@ -101,6 +103,7 @@ export interface RsvpListDTO {
 }
 
 export interface CheckinDTO {
+  guestArchived?: boolean;
   id: number;
   guestId: number | null;
   guestName: string;
@@ -111,6 +114,7 @@ export interface CheckinDTO {
   confirmedAt: number | null;
   giftAmount: number | null;
   giftMethod: GiftMethod | null;
+  giftVoided?: boolean;
   attending: Attending | null;
 }
 
@@ -140,6 +144,7 @@ export interface GiftDTO {
   note: string | null;
   checkinId: number | null;
   recordedAt: number;
+  voidedAt: number | null;
 }
 
 export interface GiftSummary {
@@ -184,4 +189,28 @@ export interface InviteData {
 export interface ImportResult {
   created: number;
   failed: { row: number; reason: string }[];
+}
+
+export type LifecycleEntity = 'guest' | 'checkin' | 'gift';
+export type LifecycleAction = 'archive' | 'restore' | 'reject' | 'cancel' | 'void';
+export interface OperationLogDTO {
+  id: number;
+  action: string;
+  reason: string;
+  actorName: string;
+  createdAt: number;
+}
+export interface LifecyclePreview {
+  entity: LifecycleEntity;
+  id: number;
+  action: LifecycleAction;
+  name: string;
+  token: string;
+  rsvpCount: number;
+  checkinCount: number;
+  giftCount: number;
+  giftTotal: number;
+  originalGiftTotal: number;
+  effect: string;
+  history: OperationLogDTO[];
 }

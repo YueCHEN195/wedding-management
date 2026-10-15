@@ -8,10 +8,12 @@ export const statsRoutes = new Hono<AppEnv>();
 statsRoutes.use('*', requireAuth, requireAdmin);
 
 function computeSummary(): StatsSummary {
-  const allGuests = db.select().from(guests).all();
-  const allRsvps = db.select().from(rsvps).all();
+  const guestRows = db.select().from(guests).all();
+  const archivedIds = new Set(guestRows.filter((g) => g.archivedAt != null).map((g) => g.id));
+  const allGuests = guestRows.filter((g) => g.archivedAt == null);
+  const allRsvps = db.select().from(rsvps).all().filter((r) => r.guestId == null || !archivedIds.has(r.guestId));
   const allCheckins = db.select().from(checkins).all();
-  const allGifts = db.select().from(gifts).all();
+  const allGifts = db.select().from(gifts).all().filter((g) => g.voidedAt == null);
 
   return {
     guestTotal: allGuests.length,
@@ -28,9 +30,11 @@ function computeSummary(): StatsSummary {
 statsRoutes.get('/summary', (c) => c.json({ ok: true, data: computeSummary() }));
 
 statsRoutes.get('/charts', (c) => {
-  const allGuests = db.select().from(guests).all();
-  const allRsvps = db.select().from(rsvps).all();
-  const allGifts = db.select().from(gifts).all();
+  const guestRows = db.select().from(guests).all();
+  const archivedIds = new Set(guestRows.filter((g) => g.archivedAt != null).map((g) => g.id));
+  const allGuests = guestRows.filter((g) => g.archivedAt == null);
+  const allRsvps = db.select().from(rsvps).all().filter((r) => r.guestId == null || !archivedIds.has(r.guestId));
+  const allGifts = db.select().from(gifts).all().filter((g) => g.voidedAt == null);
 
   const rsvp = { yes: 0, no: 0, maybe: 0 };
   for (const r of allRsvps) rsvp[r.attending]++;

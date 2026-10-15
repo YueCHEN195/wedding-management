@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { Alert, Button, Card, Empty, Form, Image, Input, InputNumber, List, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Form, Image, Input, InputNumber, List, Modal, Select, Space, Tag, Typography, message } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { RecordAction, type RecordActionTarget } from './components/RecordAction';
 import { api, ApiError } from '@/api/client';
 import type { CheckinDTO, GiftMethod, GuestCandidate, NewCheckinGuest } from '@shared/types';
 import { ATTENDING_LABEL, METHOD_LABEL, SIDE_LABEL, formatDateTime } from '@/lib/format';
@@ -48,6 +49,7 @@ function GuestSelection({ query }: { query: UseQueryResult<GuestCandidate[], Err
 
 export function ReviewPage() {
   const qc = useQueryClient();
+  const [recordAction, setRecordAction] = useState<RecordActionTarget | null>(null);
   const [confirming, setConfirming] = useState<CheckinDTO | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualSubmissionKey, setManualSubmissionKey] = useState<string | null>(null);
@@ -101,14 +103,6 @@ export function ReviewPage() {
     },
   });
 
-  const reject = useMutation({
-    mutationFn: (id: number) => api.checkins.remove(id),
-    onSuccess: () => {
-      message.success('已驳回');
-      invalidate();
-    },
-  });
-
   const manual = useMutation({
     mutationFn: (v: CheckinFormValues & { guestName: string }) =>
       api.checkins.createManual({
@@ -136,6 +130,7 @@ export function ReviewPage() {
 
   return (
     <div>
+      {recordAction && <RecordAction target={recordAction} onClose={() => setRecordAction(null)} />}
       <Space style={{ marginBottom: 16 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>现场审核</Typography.Title>
         <Tag color={items.length ? 'red' : 'default'}>待审核 {items.length}</Tag>
@@ -171,9 +166,7 @@ export function ReviewPage() {
                   <a key="ok" onClick={() => { form.resetFields(); setConfirming(item); form.setFieldsValue({ amountYuan: 0, method: 'wechat' }); }}>
                     确认并记礼金
                   </a>,
-                  <Popconfirm key="no" title="驳回后该提交将被删除，确认？" onConfirm={() => reject.mutate(item.id)}>
-                    <a style={{ color: '#cf1322' }}>驳回</a>
-                  </Popconfirm>,
+                  <a key="no" onClick={() => setRecordAction({ entity: 'checkin', id: item.id, action: 'reject' })}>驳回</a>,
                 ]}
               >
                 <List.Item.Meta
@@ -192,11 +185,11 @@ export function ReviewPage() {
         onCancel={() => setConfirming(null)}
         onOk={() => form.submit()}
         confirmLoading={confirm.isPending}
-        okButtonProps={{ disabled: confirmCandidates.isFetching || confirmCandidates.isError }}
+        okButtonProps={{ disabled: confirming?.guestArchived || confirmCandidates.isFetching || confirmCandidates.isError }}
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={(v) => confirm.mutate(v)}>
-          {confirming && <GuestSelection query={confirmCandidates} />}
+          {confirming && <>{confirming.guestArchived && <Alert type="warning" title="关联宾客已归档，请先联系管理员恢复宾客，或驳回此提交" />}<GuestSelection query={confirmCandidates} /></>}
           <Form.Item name="amountYuan" label="礼金金额（元，没有礼金填 0）" rules={[{ required: true, message: '请填写金额' }]}>
             <InputNumber min={0} max={100000} precision={2} style={{ width: '100%' }} placeholder="0" />
           </Form.Item>

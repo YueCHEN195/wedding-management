@@ -42,7 +42,7 @@ function remember(submissionKey: string, payloadHash: string, checkinId: number)
   db.insert(checkinSubmissions).values({ keyHash: digest(submissionKey), payloadHash, checkinId, createdAt: now() }).run();
 }
 function currentCheckin(guestId: number, exceptId?: number) {
-  return db.select().from(checkins).where(and(eq(checkins.guestId, guestId), exceptId == null ? undefined : ne(checkins.id, exceptId)))
+  return db.select().from(checkins).where(and(eq(checkins.guestId, guestId), exceptId == null ? undefined : ne(checkins.id, exceptId), sql`${checkins.status} in ('pending', 'confirmed')`))
     .orderBy(sql`case when ${checkins.status} = 'confirmed' then 0 else 1 end`, asc(checkins.id)).get();
 }
 function rejectExisting(row: CheckinRow | undefined) {
@@ -102,7 +102,10 @@ export function confirmCheckin(id: number, input: z.infer<typeof confirmCheckinS
   return sqlite.transaction(() => {
     const existing = db.select().from(checkins).where(eq(checkins.id, id)).get();
     if (!existing) throw new CheckinError('NOT_FOUND', '提交不存在', 404);
-    if (existing.status === 'confirmed') throw new CheckinError('CONFLICT', '该提交已被确认，请查看签到记录');
+    if (existing.status !== 'pending') throw new CheckinError('CONFLICT', '该提交已处理，请查看签到记录');
+    if (existing.guestId != null && db.select().from(guests).where(eq(guests.id, existing.guestId)).get()?.archivedAt != null) {
+      throw new CheckinError('GUEST_ARCHIVED', '关联宾客已归档，请先由管理员恢复宾客，或驳回此提交');
+    }
     const matched = resolveGuest(existing.guestName, input);
     rejectExisting(currentCheckin(matched.id, id));
     const row = db.update(checkins).set({ status: 'confirmed', confirmedAt: now(), guestId: matched.id, guestName: matched.name, note: input.note })

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/client';
 import { checkins, guests, rsvps } from '../db/schema';
 import { generateToken, now } from './util';
@@ -12,7 +12,7 @@ export class GuestMatchError extends Error {
 
 export function findGuestCandidates(name: string): GuestCandidate[] {
   const rows = db.select({ id: guests.id, name: guests.name, groupName: guests.groupName, side: guests.side })
-    .from(guests).where(eq(guests.name, name)).orderBy(asc(guests.id)).all();
+    .from(guests).where(and(eq(guests.name, name), isNull(guests.archivedAt))).orderBy(asc(guests.id)).all();
   if (!rows.length) return [];
   const latest = new Map<number, typeof rsvps.$inferSelect>();
   for (const r of db.select().from(rsvps).where(inArray(rsvps.guestId, rows.map((g) => g.id)))
@@ -32,12 +32,12 @@ export function matchOrCreateGuest(name: string, guestId?: unknown): { id: numbe
       throw new GuestMatchError('INVALID_GUEST', '宾客选择无效，请重新选择', 400);
     }
     const g = db.select().from(guests).where(eq(guests.id, guestId)).get();
-    if (!g || g.name !== name) {
+    if (!g || g.name !== name || g.archivedAt != null) {
       throw new GuestMatchError('INVALID_GUEST', '所选宾客已变更或与提交姓名不符，请刷新后重新选择', 400);
     }
     return { id: g.id, name: g.name };
   }
-  const matches = db.select({ id: guests.id, name: guests.name }).from(guests).where(eq(guests.name, name)).all();
+  const matches = db.select({ id: guests.id, name: guests.name }).from(guests).where(and(eq(guests.name, name), isNull(guests.archivedAt))).all();
   if (matches.length > 1) {
     throw new GuestMatchError('AMBIGUOUS_GUEST', '存在同名宾客，请核对分组、归属方和回执后选择对应宾客', 409);
   }

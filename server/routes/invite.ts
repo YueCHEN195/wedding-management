@@ -3,7 +3,7 @@ import { getCookie, setCookie } from 'hono/cookie';
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { and, desc, eq } from 'drizzle-orm';
-import { db } from '../db/client';
+import { db, sqlite } from '../db/client';
 import { guests, rsvps } from '../db/schema';
 import { rsvpToDTO } from '../lib/dto';
 import { now, optionalStr, str } from '../lib/util';
@@ -139,7 +139,7 @@ inviteRoutes.post('/rsvp', async (c) => {
 inviteRoutes.get('/:token', (c) => {
   const token = c.req.param('token');
   const guest = db.select().from(guests).where(eq(guests.inviteToken, token)).get();
-  if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '请柬链接无效' } }, 404);
+  if (!guest || guest.archivedAt != null) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '请柬链接已停用或无效，请联系新人' } }, 404);
   if (guest.status === 'pending' || guest.status === 'sent') {
     db.update(guests)
       .set({ status: 'viewed', viewedAt: guest.viewedAt ?? now(), updatedAt: now() })
@@ -159,18 +159,22 @@ inviteRoutes.post('/:token/rsvp', async (c) => {
     return c.json({ ok: false, error: { code: 'RATE_LIMITED', message: '提交过于频繁，请稍后再试' } }, 429);
   }
   const token = c.req.param('token');
-  const guest = db.select().from(guests).where(eq(guests.inviteToken, token)).get();
-  if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '请柬链接无效' } }, 404);
+  // 请求体可能缓慢到达，读取完成后才在写事务内重新核对当前宾客。
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const attending = (str(body.attending) || 'maybe') as Attending;
-  const data = submitRsvp({
-    guestId: guest.id,
-    guestName: guest.name,
-    attending,
-    headcount: attending === 'yes' ? Math.max(1, Number(body.headcount) || 1) : Number(body.headcount) || 0,
-    childrenCount: Math.max(0, Number(body.childrenCount) || 0),
-    message: optionalStr(body.message),
-    source: 'link',
-  });
+  const data = sqlite.transaction(() => {
+    const guest = db.select().from(guests).where(eq(guests.inviteToken, token)).get();
+    if (!guest || guest.archivedAt != null) return null;
+    return submitRsvp({
+      guestId: guest.id,
+      guestName: guest.name,
+      attending,
+      headcount: attending === 'yes' ? Math.max(1, Number(body.headcount) || 1) : Number(body.headcount) || 0,
+      childrenCount: Math.max(0, Number(body.childrenCount) || 0),
+      message: optionalStr(body.message),
+      source: 'link',
+    });
+  }).immediate();
+  if (!data) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '请柬链接已停用或无效，请联系新人' } }, 404);
   return c.json({ ok: true, data });
 });

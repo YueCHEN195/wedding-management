@@ -21,6 +21,7 @@ export function guestToDTO(row: GuestRow, attending: RsvpRow['attending'] | null
     inviteUrl: inviteUrl(row.inviteToken),
     invitedAt: row.invitedAt,
     viewedAt: row.viewedAt,
+    archivedAt: row.archivedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     attending,
@@ -54,6 +55,7 @@ export function checkinToDTO(row: CheckinRow, gift?: GiftRow | null): CheckinDTO
     confirmedAt: row.confirmedAt,
     giftAmount: gift ? gift.amount : null,
     giftMethod: gift ? gift.method : null,
+    giftVoided: gift?.voidedAt != null,
     attending: null,
   };
 }
@@ -68,5 +70,6 @@ export function giftToDTO(row: GiftRow): GiftDTO {
     note: row.note,
     checkinId: row.checkinId,
     recordedAt: row.recordedAt,
+    voidedAt: row.voidedAt,
   };
 }

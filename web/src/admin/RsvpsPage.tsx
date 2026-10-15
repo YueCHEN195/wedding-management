@@ -23,13 +23,15 @@ export function RsvpsPage() {
     onSuccess: () => {
       message.success('已保存');
       setEditing(null);
-      qc.invalidateQueries({ queryKey: ['rsvps'] });
+      for (const key of ['rsvps', 'guests', 'guest-detail', 'checkin-candidates', 'stats']) {
+        qc.invalidateQueries({ queryKey: [key] });
+      }
     },
     onError: (e) => message.error(e instanceof ApiError ? e.message : '保存失败'),
   });
 
   const columns: ColumnsType<RsvpDTO> = [
-    { title: '姓名', dataIndex: 'guestName', width: 140 },
+    { title: '姓名', dataIndex: 'guestName', width: 140, render: (v, r) => <>{v}{r.guestArchived && <Tag>宾客已归档</Tag>}</> },
     {
       title: '是否出席',
       dataIndex: 'attending',
@@ -45,7 +47,7 @@ export function RsvpsPage() {
       title: '操作',
       width: 80,
       render: (_, r) => (
-        <a
+        <a aria-disabled={r.guestArchived} style={r.guestArchived ? { color: '#999', pointerEvents: 'none' } : undefined}
           onClick={() => {
             setEditing(r);
             form.setFieldsValue(r);

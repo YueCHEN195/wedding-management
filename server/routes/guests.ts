@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { and, asc, count, desc, eq, inArray, like, or } from 'drizzle-orm';
-import { db } from '../db/client';
+import { and, asc, count, desc, eq, inArray, isNull, isNotNull, like, or } from 'drizzle-orm';
+import { db, sqlite } from '../db/client';
 import { checkins, gifts, guests, rsvps } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { checkinToDTO, giftToDTO, guestToDTO, inviteUrl, rsvpToDTO } from '../lib/dto';
@@ -25,6 +25,9 @@ guestRoutes.get('/', (c) => {
   const side = url.searchParams.get('side');
 
   const conds = [];
+  const archived = url.searchParams.get('archived');
+  if (archived === 'only') conds.push(isNotNull(guests.archivedAt));
+  else if (archived !== 'all') conds.push(isNull(guests.archivedAt));
   if (keyword) conds.push(or(like(guests.name, `%${keyword}%`), like(guests.phone, `%${keyword}%`)));
   if (status) conds.push(eq(guests.status, status as GuestStatus));
   if (groupName) conds.push(eq(guests.groupName, groupName));
@@ -57,7 +60,7 @@ guestRoutes.get('/', (c) => {
 
 /** 分组列表（用于筛选下拉） */
 guestRoutes.get('/groups', (c) => {
-  const rows = db.selectDistinct({ groupName: guests.groupName }).from(guests).all();
+  const rows = db.selectDistinct({ groupName: guests.groupName }).from(guests).where(isNull(guests.archivedAt)).all();
   return c.json({ ok: true, data: rows.map((r) => r.groupName).filter((v): v is string => !!v) });
 });
 
@@ -91,6 +94,7 @@ guestRoutes.patch('/:id', requireAdmin, async (c) => {
   const id = Number(c.req.param('id'));
   const existing = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!existing) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
+  if (existing.archivedAt != null) return c.json({ ok: false, error: { code: 'GUEST_ARCHIVED', message: '请先恢复已归档宾客再编辑' } }, 409);
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
 
   const patch: Partial<typeof guests.$inferInsert> = { updatedAt: now() };
@@ -101,31 +105,26 @@ guestRoutes.patch('/:id', requireAdmin, async (c) => {
   if ('side' in body) patch.side = (optionalStr(body.side) as Side | null) ?? null;
   if ('note' in body) patch.note = optionalStr(body.note);
 
-  const row = db.update(guests).set(patch).where(eq(guests.id, id)).returning().get();
+  const row = db.update(guests).set(patch).where(and(eq(guests.id, id), isNull(guests.archivedAt))).returning().get();
+  if (!row) return c.json({ ok: false, error: { code: 'CONFLICT', message: '宾客已归档或变更，请刷新后重新核对' } }, 409);
   return c.json({ ok: true, data: guestToDTO(row) });
 });
 
-/** 删除（回执级联删除；签到/礼金保留但解除关联） */
-guestRoutes.delete('/:id', requireAdmin, (c) => {
-  const id = Number(c.req.param('id'));
-  const existing = db.select().from(guests).where(eq(guests.id, id)).get();
-  if (!existing) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
-  db.delete(rsvps).where(eq(rsvps.guestId, id)).run();
-  db.update(checkins).set({ guestId: null }).where(eq(checkins.guestId, id)).run();
-  db.update(gifts).set({ guestId: null }).where(eq(gifts.guestId, id)).run();
-  db.delete(guests).where(eq(guests.id, id)).run();
-  return c.json({ ok: true, data: true });
-});
+/** 旧物理删除入口关闭，归档保留全部关联。 */
+guestRoutes.delete('/:id', requireAdmin, (c) => c.json({ ok: false, error: { code: 'DELETE_DISABLED', message: '不再支持永久删除，请刷新页面使用归档、驳回、撤销或作废，并核对影响范围' } }, 409));
 
 /** 标记已发送 */
 guestRoutes.post('/:id/mark-sent', requireAdmin, (c) => {
   const id = Number(c.req.param('id'));
-  const row = db
-    .update(guests)
-    .set({ status: 'sent', invitedAt: now(), updatedAt: now() })
-    .where(eq(guests.id, id))
-    .returning()
-    .get();
+  const row = sqlite.transaction(() => {
+    const existing = db.select().from(guests).where(eq(guests.id, id)).get();
+    if (!existing || existing.archivedAt != null) return null;
+    const hasRsvp = db.select({ id: rsvps.id }).from(rsvps).where(eq(rsvps.guestId, id)).get();
+    return db.update(guests).set({
+      status: hasRsvp ? 'rsvp' : existing.status === 'pending' ? 'sent' : existing.status,
+      invitedAt: existing.invitedAt ?? now(), updatedAt: now(),
+    }).where(eq(guests.id, id)).returning().get();
+  }).immediate();
   if (!row) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
   return c.json({ ok: true, data: guestToDTO(row) });
 });
@@ -138,7 +137,7 @@ guestRoutes.get('/:id/detail', requireAdmin, (c) => {
   const rsvpRow = db.select().from(rsvps).where(eq(rsvps.guestId, id)).orderBy(desc(rsvps.submittedAt)).get();
   const checkinRows = db.select().from(checkins).where(eq(checkins.guestId, id)).orderBy(desc(checkins.submittedAt)).all();
   const giftRows = db.select().from(gifts).where(eq(gifts.guestId, id)).orderBy(desc(gifts.recordedAt)).all();
-  const giftTotal = giftRows.reduce((s, g) => s + g.amount, 0);
+  const giftTotal = giftRows.filter((g) => g.voidedAt == null).reduce((s, g) => s + g.amount, 0);
   return c.json({
     ok: true,
     data: {
@@ -171,7 +170,7 @@ guestRoutes.get('/:id/poster', async (c) => {
 
 /** 批量海报 ZIP（仅管理员） */
 guestRoutes.get('/posters/export', requireAdmin, async (c) => {
-  const rows = db.select().from(guests).orderBy(asc(guests.id)).all();
+  const rows = db.select().from(guests).where(isNull(guests.archivedAt)).orderBy(asc(guests.id)).all();
   const files: { name: string; buffer: Buffer }[] = [];
   for (const g of rows) {
     const png = await renderPoster(inviteUrl(g.inviteToken));
@@ -192,29 +191,31 @@ guestRoutes.post('/import', requireAdmin, async (c) => {
   const buffer = Buffer.from(await file.arrayBuffer());
   const { guests: parsed, failed } = await parseGuestWorkbook(buffer);
   const ts = now();
-  let created = 0;
-  for (const g of parsed) {
-    db.insert(guests)
-      .values({
-        name: g.name,
-        salutation: g.salutation,
-        phone: g.phone,
-        groupName: g.groupName,
-        side: g.side,
-        inviteToken: generateToken(),
-        status: 'pending',
-        createdAt: ts,
-        updatedAt: ts,
-      })
-      .run();
-    created++;
-  }
+  // 解析在事务外完成；有效行作为一批写入，数据库失败时整批回滚。
+  const created = sqlite.transaction(() => {
+    for (const g of parsed) {
+      db.insert(guests)
+        .values({
+          name: g.name,
+          salutation: g.salutation,
+          phone: g.phone,
+          groupName: g.groupName,
+          side: g.side,
+          inviteToken: generateToken(),
+          status: 'pending',
+          createdAt: ts,
+          updatedAt: ts,
+        })
+        .run();
+    }
+    return parsed.length;
+  }).immediate();
   return c.json({ ok: true, data: { created, failed } });
 });
 
 /** 导出 Excel */
 guestRoutes.get('/export', requireAdmin, async (c) => {
-  const rows = db.select().from(guests).orderBy(asc(guests.id)).all();
+  const rows = db.select().from(guests).where(isNull(guests.archivedAt)).orderBy(asc(guests.id)).all();
   const statusLabel: Record<string, string> = { pending: '待邀请', sent: '已发送', viewed: '已查看', rsvp: '已回执' };
   const sideLabel: Record<string, string> = { male: '男方', female: '女方', both: '双方' };
   const buf = await buildWorkbook([

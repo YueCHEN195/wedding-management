@@ -8,7 +8,6 @@ import {
   Image,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Space,
   Table,
@@ -19,6 +18,7 @@ import {
 } from 'antd';
 import { DownloadOutlined, ImportOutlined, PlusOutlined, PictureOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { RecordAction, RecordHistory, type RecordActionTarget } from './components/RecordAction';
 import { api, ApiError, type GuestListParams } from '@/api/client';
 import type { GuestDTO, GuestStatus, Side } from '@shared/types';
 import { ATTENDING_COLOR, ATTENDING_LABEL, SIDE_LABEL, STATUS_COLOR, STATUS_LABEL, formatDateTime, yuan } from '@/lib/format';
@@ -26,6 +26,8 @@ import { ATTENDING_COLOR, ATTENDING_LABEL, SIDE_LABEL, STATUS_COLOR, STATUS_LABE
 export function GuestsPage() {
   const qc = useQueryClient();
   const [params, setParams] = useState<GuestListParams>({ page: 1, pageSize: 10 });
+  const [action, setAction] = useState<RecordActionTarget | null>(null);
+  const [historyId, setHistoryId] = useState<number | null>(null);
   const [editing, setEditing] = useState<GuestDTO | null>(null);
   const [creating, setCreating] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
@@ -43,7 +45,11 @@ export function GuestsPage() {
     enabled: detailId != null,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['guests'] });
+  const invalidate = () => {
+    for (const key of ['guests', 'guest-groups', 'guest-detail', 'rsvps', 'checkins', 'checkin-candidates', 'gifts', 'stats']) {
+      qc.invalidateQueries({ queryKey: [key] });
+    }
+  };
 
   const save = useMutation({
     mutationFn: async (values: Partial<GuestDTO>) =>
@@ -57,20 +63,13 @@ export function GuestsPage() {
     onError: (e) => message.error(e instanceof ApiError ? e.message : '保存失败'),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: number) => api.guests.remove(id),
-    onSuccess: () => {
-      message.success('已删除');
-      invalidate();
-    },
-  });
-
   const markSent = useMutation({
     mutationFn: (id: number) => api.guests.markSent(id),
     onSuccess: () => {
-      message.success('已标记为已发送');
+      message.success('已记录发送');
       invalidate();
     },
+    onError: (e) => message.error(e instanceof ApiError ? e.message : '标记失败，请重试'),
   });
 
   const openCreate = () => {
@@ -96,7 +95,7 @@ export function GuestsPage() {
   const columns: ColumnsType<GuestDTO> = [
     { title: '姓名', dataIndex: 'name', width: 110, render: (v, r) => (
       <a onClick={() => setDetailId(r.id)}>
-        {v} {r.salutation ? <span style={{ color: '#999' }}>({r.salutation})</span> : null}
+        {v} <small>#{r.id}</small> {r.salutation ? <span style={{ color: '#999' }}>({r.salutation})</span> : null}
       </a>
     ) },
     { title: '手机号', dataIndex: 'phone', width: 130, render: (v) => v ?? '-' },
@@ -107,7 +106,7 @@ export function GuestsPage() {
       dataIndex: 'status',
       width: 90,
       render: (v: GuestStatus, r) => (
-        <Tag color={STATUS_COLOR[v]}>{STATUS_LABEL[v]}{r.attending ? ` · ${ATTENDING_LABEL[r.attending]}` : ''}</Tag>
+        <Tag color={r.archivedAt != null ? 'default' : STATUS_COLOR[v]}>{r.archivedAt != null ? '已归档' : STATUS_LABEL[v]}{r.attending ? ` · ${ATTENDING_LABEL[r.attending]}` : ''}</Tag>
       ),
     },
     { title: '备注', dataIndex: 'note', ellipsis: true, render: (v) => v ?? '-' },
@@ -117,17 +116,18 @@ export function GuestsPage() {
       fixed: 'right',
       render: (_, r) => (
         <Space size="small" wrap>
-          {isAdmin && <a href={`/invite/${encodeURIComponent(r.inviteToken)}`} target="_blank" rel="noopener noreferrer">预览请柬</a>}
-          <a onClick={() => copyLink(r)}>复制链接</a>
-          <a onClick={() => markSent.mutate(r.id)}>标记已发送</a>
-          <a onClick={() => setQrGuest(r)}>二维码</a>
-          <a onClick={() => setPosterGuest(r)}>海报</a>
-          {isAdmin && <a onClick={() => openEdit(r)}>编辑</a>}
-          {isAdmin && (
-            <Popconfirm title="确认删除该宾客？" onConfirm={() => remove.mutate(r.id)}>
-              <a style={{ color: '#cf1322' }}>删除</a>
-            </Popconfirm>
-          )}
+          {r.archivedAt == null && <>
+            {isAdmin && <a href={`/invite/${encodeURIComponent(r.inviteToken)}`} target="_blank" rel="noopener noreferrer">预览请柬</a>}
+            <a onClick={() => copyLink(r)}>复制链接</a>
+            {isAdmin && <a onClick={() => markSent.mutate(r.id)}>标记已发送</a>}
+            <a onClick={() => setQrGuest(r)}>二维码</a>
+            <a onClick={() => setPosterGuest(r)}>海报</a>
+            {isAdmin && <a onClick={() => openEdit(r)}>编辑</a>}
+          </>}
+          {isAdmin && <>
+            <a onClick={() => setAction({ entity: 'guest', id: r.id, action: r.archivedAt == null ? 'archive' : 'restore' })}>{r.archivedAt == null ? '归档' : '恢复'}</a>
+            <a onClick={() => setHistoryId(r.id)}>操作记录</a>
+          </>}
         </Space>
       ),
     },
@@ -135,7 +135,10 @@ export function GuestsPage() {
 
   return (
     <div>
+      {action && <RecordAction key={`${action.id}-${action.action}`} target={action} onClose={() => { setAction(null); setDetailId(null); }} />}
+      {historyId != null && <RecordHistory entity="guest" id={historyId} onClose={() => setHistoryId(null)} />}
       <Space style={{ marginBottom: 16 }} wrap>
+        <Select value={params.archived ?? 'active'} style={{ width: 130 }} options={[{ value: 'active', label: '当前宾客' }, { value: 'only', label: '已归档宾客' }, { value: 'all', label: '全部宾客' }]} onChange={(v) => setParams((p) => ({ ...p, archived: v === 'only' ? 'only' : v === 'all' ? 'all' : undefined, page: 1 }))} />
         <Input.Search
           placeholder="姓名 / 手机号"
           allowClear
@@ -256,10 +259,10 @@ export function GuestsPage() {
               <Descriptions.Item label="称谓">{detail.data.guest.salutation ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="手机号">{detail.data.guest.phone ?? '-'}</Descriptions.Item>
               <Descriptions.Item label="状态">
-                <Tag color={STATUS_COLOR[detail.data.guest.status]}>{STATUS_LABEL[detail.data.guest.status]}</Tag>
+                <Tag color={detail.data.guest.archivedAt == null ? STATUS_COLOR[detail.data.guest.status] : 'default'}>{detail.data.guest.archivedAt != null ? '已归档（历史记录保留）' : STATUS_LABEL[detail.data.guest.status]}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="邀请链接">
-                <a onClick={() => copyLink(detail.data!.guest)}>复制</a>
+                {detail.data.guest.archivedAt != null ? '已停用，恢复宾客后可用' : <a onClick={() => copyLink(detail.data!.guest)}>复制</a>}
               </Descriptions.Item>
             </Descriptions>
             <Typography.Title level={5} style={{ marginTop: 16 }}>回执</Typography.Title>
@@ -276,14 +279,14 @@ export function GuestsPage() {
             <Typography.Title level={5} style={{ marginTop: 16 }}>签到（{detail.data.checkins.length}）</Typography.Title>
             {detail.data.checkins.map((c) => (
               <div key={c.id}>
-                {formatDateTime(c.submittedAt)} · {c.status === 'confirmed' ? '已确认' : '待审核'}
+                {formatDateTime(c.submittedAt)} · {({ pending: '待审核', confirmed: '已确认', rejected: '已驳回', cancelled: '已撤销' })[c.status]}
               </div>
             ))}
             <Typography.Title level={5} style={{ marginTop: 16 }}>
               礼金（合计 ¥{yuan(detail.data.giftTotal)}）
             </Typography.Title>
             {detail.data.gifts.map((g) => (
-              <div key={g.id}>{formatDateTime(g.recordedAt)} · ¥{yuan(g.amount)} · {g.method}</div>
+              <div key={g.id}>{formatDateTime(g.recordedAt)} · ¥{yuan(g.amount)}{g.voidedAt != null ? '（已作废，不计入合计）' : ''} · {g.method}</div>
             ))}
           </div>
         )}
