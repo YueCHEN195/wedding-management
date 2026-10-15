@@ -58,6 +58,13 @@ function validate(state: ReturnType<typeof load>, entity: LifecycleEntity, actio
 
 function historyToDTO(log: typeof operationLogs.$inferSelect): OperationLogDTO {
   const { id, action, reason, actorName, createdAt } = log;
+  if (log.entity === 'gift' && (action === 'create' || action === 'edit')) {
+    const before = JSON.parse(log.before);
+    const after = JSON.parse(log.after);
+    const methods: Record<string, string> = { cash: '现金', wechat: '微信', alipay: '支付宝' };
+    const describe = (v: { amount: number; method: string; note: string | null }) => `¥${(v.amount / 100).toFixed(2)} · ${methods[v.method] ?? v.method} · 备注：${v.note || '未填'}`;
+    return { id, action, reason, actorName, createdAt, detail: before ? `${describe(before)} → ${describe(after)}` : describe(after) };
+  }
   if (action !== 'attendance') return { id, action, reason, actorName, createdAt };
   const before = JSON.parse(log.before);
   const after = JSON.parse(log.after);
@@ -106,7 +113,7 @@ export function applyLifecycle(entity: LifecycleEntity, id: number, action: Life
     const after = entity === 'guest'
       ? db.update(guests).set({ archivedAt: action === 'archive' ? ts : null, updatedAt: ts }).where(eq(guests.id, id)).returning().get()!
       : entity === 'gift'
-        ? db.update(gifts).set({ voidedAt: action === 'void' ? ts : null }).where(eq(gifts.id, id)).returning().get()!
+        ? db.update(gifts).set({ voidedAt: action === 'void' ? ts : null, version: state.gift!.version + 1 }).where(eq(gifts.id, id)).returning().get()!
         : db.update(checkins).set({ status: action === 'reject' ? 'rejected' : action === 'cancel' ? 'cancelled'
           : state.checkin!.status === 'cancelled' ? 'confirmed' : 'pending' }).where(eq(checkins.id, id)).returning().get()!;
     db.insert(operationLogs).values({ entity, entityId: id, action, reason, actorId: actor.id, actorName: actor.username,

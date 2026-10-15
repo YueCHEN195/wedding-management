@@ -64,6 +64,7 @@ export function checkinToDTO(row: CheckinRow, gift?: GiftRow | null): CheckinDTO
 
 export function giftToDTO(row: GiftRow): GiftDTO {
   return {
+    version: row.version,
     id: row.id,
     guestId: row.guestId,
     guestName: row.guestName,

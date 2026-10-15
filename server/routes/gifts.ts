@@ -6,11 +6,15 @@ import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { giftToDTO } from '../lib/dto';
 import { now, parsePage, str } from '../lib/util';
 import { enumQuery, giftCreateSchema, giftPatchSchema, GIFT_INPUT_MESSAGE, InputError, inputErrorHandler, parseId, parseInput } from '../lib/validation';
+import { editGift, GiftEditError, insertGiftWithAudit } from '../services/gifts';
 import type { GiftMethod } from '../../shared/types';
 
 export const giftRoutes = new Hono<AppEnv>();
 giftRoutes.use('*', requireAuth);
-giftRoutes.onError(inputErrorHandler);
+giftRoutes.onError((err, c) => {
+  if (err instanceof GiftEditError) return c.json({ ok: false, error: { code: err.code, message: err.message } }, 409);
+  return inputErrorHandler(err, c);
+});
 
 giftRoutes.get('/', (c) => {
   const { page, pageSize, offset } = parsePage(c.req.url);
@@ -62,21 +66,22 @@ giftRoutes.post('/', requireAdmin, async (c) => {
       const guest = db.select().from(guests).where(eq(guests.id, body.guestId)).get();
       if (!guest || guest.name !== body.guestName) throw new InputError('所选宾客不存在或与姓名不符，请重新核对宾客编号');
     }
-    return db.insert(gifts).values({ ...body, guestId: body.guestId ?? null, checkinId: null, recordedAt: now() }).returning().get();
+    return insertGiftWithAudit({ ...body, guestId: body.guestId ?? null, checkinId: null, recordedAt: now() }, c.get('user'), '管理员独立登记实收礼金');
   }).immediate();
+  return c.json({ ok: true, data: giftToDTO(row) });
+});
+
+giftRoutes.get('/:id', requireAdmin, (c) => {
+  const row = db.select().from(gifts).where(eq(gifts.id, parseId(c.req.param('id')))).get();
+  c.header('Cache-Control', 'no-store');
+  if (!row) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '礼金记录不存在' } }, 404);
   return c.json({ ok: true, data: giftToDTO(row) });
 });
 
 giftRoutes.patch('/:id', requireAdmin, async (c) => {
   const id = parseId(c.req.param('id'));
-  const patch = parseInput(giftPatchSchema, await c.req.json().catch(() => null), GIFT_INPUT_MESSAGE + '；编辑时不能改名、改绑宾客或修改作废状态');
-  const row = sqlite.transaction(() => {
-    const current = db.select().from(gifts).where(eq(gifts.id, id)).get();
-    if (!current || current.voidedAt != null) return null;
-    return db.update(gifts).set(patch).where(eq(gifts.id, id)).returning().get();
-  }).immediate();
-  if (!row) return c.json({ ok: false, error: { code: 'CONFLICT', message: '记录已作废或不存在，不能编辑，请刷新后查看' } }, 409);
-  return c.json({ ok: true, data: giftToDTO(row) });
+  const patch = parseInput(giftPatchSchema, await c.req.json().catch(() => null), GIFT_INPUT_MESSAGE + '；修改需填写原因并核对原版本；不能改名、改绑宾客或修改作废状态');
+  return c.json({ ok: true, data: giftToDTO(editGift(id, patch, c.get('user'))) });
 });
 
 giftRoutes.delete('/:id', requireAdmin, (c) => c.json({ ok: false, error: { code: 'DELETE_DISABLED', message: '不再支持永久删除，请刷新页面使用归档、驳回、撤销或作废，并核对影响范围' } }, 409));

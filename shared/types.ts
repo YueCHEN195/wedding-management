@@ -139,6 +139,7 @@ export interface PendingCheckinDTO extends CheckinDTO {
 }
 
 export interface GiftDTO {
+  version: number;
   id: number;
   guestId: number | null;
   guestName: string;

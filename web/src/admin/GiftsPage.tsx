@@ -21,6 +21,25 @@ export function GiftsPage() {
   const [editing, setEditing] = useState<GiftDTO | null>(null);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
+  const draftAmount = parseGiftYuan(Form.useWatch('amountYuan', form));
+  const draftMethod = Form.useWatch('method', form) as GiftMethod | undefined;
+  const draftNote = Form.useWatch('note', form) as string | undefined;
+  const latest = useQuery({ queryKey: ['gift-current', editing?.id], queryFn: () => api.gifts.get(editing!.id), enabled: creating && !!editing && conflict, staleTime: 0, refetchOnWindowFocus: false });
+  const clearSaveState = () => { setSaveError(null); setConflict(false); };
+  const recheckDraft = () => {
+    if (!editing || !latest.data || latest.data.voidedAt != null) return;
+    const v = form.getFieldsValue();
+    // 仅保留本次真正修改的字段，未修改的字段采用他人的最新值。
+    form.setFieldsValue({
+      amountYuan: parseGiftYuan(v.amountYuan) === editing.amount ? String(latest.data.amount / 100) : v.amountYuan,
+      method: v.method === editing.method ? latest.data.method : v.method,
+      note: (v.note?.trim() || null) === (editing.note?.trim() || null) ? latest.data.note : v.note,
+    });
+    setEditing(latest.data); clearSaveState();
+    message.info('已保留你的修改并载入最新内容，请核对下方预览后重新保存');
+  };
   const name = ((Form.useWatch('guestName', form) as string | undefined) ?? '').trim();
   const candidates = useQuery({ queryKey: ['checkin-candidates', name], queryFn: () => api.checkins.candidates(name), enabled: creating && !editing && !!name, staleTime: 0 });
   useEffect(() => { form.setFieldValue('guestId', undefined); }, [name, form]);
@@ -30,7 +49,7 @@ export function GiftsPage() {
   const isAdmin = me.data?.role === 'admin';
 
   const save = useMutation({
-    mutationFn: (v: { guestName: string; amountYuan: string; method: GiftMethod; note?: string; guestId?: number | 'none' }) => {
+    mutationFn: (v: { guestName: string; amountYuan: string; method: GiftMethod; note?: string; reason?: string; guestId?: number | 'none' }) => {
       const amount = parseGiftYuan(v.amountYuan);
       if (amount == null) throw new ApiError('VALIDATION', '金额须为0.01–100000元，最多两位小数', 400);
       const payload = {
@@ -40,15 +59,26 @@ export function GiftsPage() {
         method: v.method,
         note: v.note,
       };
-      return editing ? api.gifts.update(editing.id, { amount: payload.amount, method: payload.method, note: payload.note }) : api.gifts.create(payload);
+      if (!editing) return api.gifts.create(payload);
+      const patch = {
+        ...(payload.amount !== editing.amount ? { amount: payload.amount } : {}),
+        ...(payload.method !== editing.method ? { method: payload.method } : {}),
+        ...((payload.note?.trim() || null) !== (editing.note?.trim() || null) ? { note: payload.note?.trim() || null } : {}),
+      };
+      if (!Object.keys(patch).length) throw new ApiError('NO_CHANGES', '内容没有变化，无需重复保存', 400);
+      return api.gifts.update(editing.id, { ...patch, expectedVersion: editing.version, reason: v.reason ?? '' });
     },
     onSuccess: () => {
-      message.success('已保存');
+      message.success(editing ? '已更正，修改前后值与原因已留存' : '已登记，操作记录已保留');
+      clearSaveState();
       setEditing(null);
       setCreating(false);
-      for (const key of ['gifts', 'stats', 'guest-detail', 'checkins']) qc.invalidateQueries({ queryKey: [key] });
+      for (const key of ['gifts', 'stats', 'guest-detail', 'checkins', 'record-history', 'action-preview', 'gift-current']) qc.invalidateQueries({ queryKey: [key] });
     },
-    onError: (e) => message.error(e instanceof ApiError ? e.message : '保存失败'),
+    onError: (e) => {
+      setSaveError(e instanceof ApiError ? e.message : '保存失败，请重试；当前填写已保留');
+      if (e instanceof ApiError && ['VERSION_CONFLICT', 'CONFLICT'].includes(e.code)) setConflict(true);
+    },
   });
 
   const columns: ColumnsType<GiftDTO> = [
@@ -69,6 +99,7 @@ export function GiftsPage() {
         <Space size="small">
           {r.voidedAt == null && <a
             onClick={() => {
+              clearSaveState();
               setEditing(r);
               setCreating(true);
               form.resetFields();
@@ -125,6 +156,7 @@ export function GiftsPage() {
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => {
+              clearSaveState();
               setEditing(null);
               form.resetFields();
               setCreating(true);
@@ -151,18 +183,34 @@ export function GiftsPage() {
       />
 
       <Modal
-        title={editing ? '编辑礼金' : '新增礼金'}
+        title={editing ? `更正礼金 · ${editing.guestName} #${editing.id}` : '新增礼金'}
+        width={680}
+        style={{ top: 24 }}
+        styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' } }}
         open={creating}
         onCancel={() => {
+          if (save.isPending) return;
           setCreating(false);
           setEditing(null);
+          clearSaveState();
         }}
+        okText={editing ? '保存更正并留痕' : '登记礼金'}
         onOk={() => form.submit()}
         confirmLoading={save.isPending}
-        okButtonProps={{ disabled: !editing && !!name && (candidates.isFetching || candidates.isError) }}
+        cancelButtonProps={{ disabled: save.isPending }}
+        okButtonProps={{ disabled: save.isPending || conflict || !editing && !!name && (candidates.isFetching || candidates.isError) }}
         destroyOnClose
       >
-        <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} initialValues={{ method: 'cash' }}>
+        {saveError && <Alert type="error" showIcon style={{ marginBottom: 16 }} title="本次更改尚未保存" description={saveError} />}
+        {conflict && <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="请先核对最新账目，你的草稿已保留" description={<>
+          {latest.isFetching ? <p>正在读取最新记录…</p> : latest.isError ? <p>无法读取最新记录，请重试。</p> : latest.data && <>
+            <p>最新记录：¥{yuan(latest.data.amount)} · {METHOD_LABEL[latest.data.method]} · {latest.data.voidedAt == null ? '有效' : '已撤回，当前不能更正'}</p>
+            <p style={{ overflowWrap: 'anywhere' }}>最新备注：{latest.data.note || '未填'}</p>
+            {latest.data.voidedAt == null && <Button onClick={recheckDraft}>保留我的修改，载入最新记录核对</Button>}
+          </>}
+          <Button type="link" disabled={latest.isFetching} onClick={() => latest.refetch()}>重新读取最新记录</Button>
+        </>} />}
+        <Form form={form} disabled={save.isPending} layout="vertical" onFinish={(v) => { if (!save.isPending && !conflict && (editing || !name || !candidates.isFetching && !candidates.isError)) save.mutate(v); }} initialValues={{ method: 'cash' }}>
           <Form.Item name="guestName" label="姓名" rules={[{ required: true, whitespace: true, max: MAX_NAME_LENGTH, message: '请填写姓名（1–50字）' }]}>
             <Input disabled={!!editing} maxLength={MAX_NAME_LENGTH} />
           </Form.Item>
@@ -185,9 +233,18 @@ export function GiftsPage() {
           <Form.Item name="method" label="方式" rules={[{ required: true }]}>
             <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />
           </Form.Item>
+          {editing && <Alert showIcon type="info" style={{ marginBottom: 16 }} title="保存前核对" description={<>
+            <p>原记录：¥{yuan(editing.amount)} · {METHOD_LABEL[editing.method]}</p>
+            <p>本次修改：{draftAmount == null ? '请填写合法金额' : `¥${yuan(draftAmount)}`} · {draftMethod ? METHOD_LABEL[draftMethod] : '请选择方式'}</p>
+            {(draftNote?.trim() || null) !== (editing.note?.trim() || null) && <p style={{ overflowWrap: 'anywhere' }}>备注：{editing.note || '未填'} → {draftNote?.trim() || '未填'}</p>}
+            <span>保存后按新金额计入有效汇总，原金额、方式、备注及更正原因保留在操作记录中。</span>
+          </>} />}
           <Form.Item name="note" label="备注" rules={[{ max: MAX_TEXT_LENGTH, message: '备注最多500字' }]} >
             <Input maxLength={MAX_TEXT_LENGTH} />
           </Form.Item>
+          {editing && <Form.Item name="reason" label="更正原因" rules={[{ required: true, whitespace: true, max: 200, message: '请填写具体更正原因（最多200字）' }]}>
+            <Input.TextArea maxLength={200} rows={2} placeholder="例如：现场重新核对红包，原金额录入有误" />
+          </Form.Item>}
         </Form>
       </Modal>
     </div>

@@ -23,6 +23,10 @@ app.onError((_, c) => c.json({ ok: false, error: { code: 'INTERNAL' } }, 500));
 const cookie = `wedding_session=${await createToken({ id: 1, username: 'admin', role: 'admin' })}`;
 let ip = 0;
 async function request(path: string, method = 'GET', body?: unknown) {
+  if (method === 'PATCH' && /^\/api\/gifts\/\d+$/.test(path) && body && typeof body === 'object' && !Array.isArray(body)) {
+    const current = sqlite.prepare('SELECT version FROM gifts WHERE id=?').get(Number(path.split('/').pop())) as any;
+    body = { expectedVersion: current?.version ?? 1, reason: '验收更正', ...body };
+  }
   const response = await app.request(path, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': `198.51.100.${++ip}` }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   return { status: response.status, body: await response.json() as any };
 }

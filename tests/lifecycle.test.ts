@@ -34,6 +34,10 @@ const cookies = {
 let ip = 0;
 async function request(path: string, method = 'GET', body?: object, role: 'admin' | 'staff' = 'admin') {
   if (body && (path === '/api/checkins' || path.endsWith('/confirm'))) body = { actualHeadcount: 1, actualChildrenCount: 0, ...body };
+  if (method === 'PATCH' && /^\/api\/gifts\/\d+$/.test(path) && body && typeof body === 'object' && !Array.isArray(body)) {
+    const current = sqlite.prepare('SELECT version FROM gifts WHERE id=?').get(Number(path.split('/').pop())) as any;
+    body = { expectedVersion: current?.version ?? 1, reason: '验收更正', ...body };
+  }
   const response = await app.request(path, { method, headers: { Cookie: cookies[role], 'Content-Type': 'application/json', 'X-Forwarded-For': `192.0.2.${++ip}` }, ...(body ? { body: JSON.stringify(body) } : {}) });
   return { status: response.status, body: await response.json() as any };
 }

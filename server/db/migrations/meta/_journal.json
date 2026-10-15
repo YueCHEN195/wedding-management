@@ -36,6 +36,13 @@
       "when": 1792108800000,
       "tag": "0004_actual_attendance",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792112400000,
+      "tag": "0005_gift_edit_version",
+      "breakpoints": true
     }
   ]
 }

@@ -40,7 +40,9 @@ const money = z.number().int().safe().min(1).max(MAX_GIFT_CENTS);
 const method = z.enum(['cash', 'wechat', 'alipay']);
 export const giftCreateSchema = z.object({ guestName: name, guestId: z.number().int().positive().safe().nullable().optional(),
   amount: money, method: method.default('cash'), note: optionalText(MAX_TEXT_LENGTH) }).strict();
-export const giftPatchSchema = z.object({ amount: money, method, note: optionalText(MAX_TEXT_LENGTH) }).partial().strict().refine((v) => Object.keys(v).length > 0);
+export const giftPatchSchema = z.object({ amount: money.optional(), method: method.optional(), note: optionalText(MAX_TEXT_LENGTH).optional(),
+  expectedVersion: z.number().int().positive().safe(), reason: z.string().trim().min(1).max(200) }).strict()
+  .refine((v) => v.amount !== undefined || v.method !== undefined || v.note !== undefined);
 export const guestCreateSchema = z.object({ name, salutation: optionalText(30), phone: optionalText(30),
   groupName: optionalText(MAX_GROUP_LENGTH), side: z.enum(['male', 'female', 'both']).nullable().optional(), note: optionalText(MAX_TEXT_LENGTH) }).strict();
 export const guestPatchSchema = guestCreateSchema.partial().refine((v) => Object.keys(v).length > 0);

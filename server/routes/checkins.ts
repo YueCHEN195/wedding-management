@@ -78,7 +78,7 @@ checkinRoutes.get('/pending', (c) => {
 checkinRoutes.post('/', async (c) => {
   const parsed = manualCheckinSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对实际总人数（1–20人）、儿童人数（0至总人数）、姓名、宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注；如页面已打开较久，请刷新后重试' } }, 400);
-  const { checkin, gift, duplicate } = createManualCheckin(parsed.data);
+  const { checkin, gift, duplicate } = createManualCheckin(parsed.data, c.get('user'));
   return c.json({ ok: true, data: { ...checkinToDTO(checkin, gift), duplicate } });
 });
 
@@ -88,7 +88,7 @@ checkinRoutes.patch('/:id/confirm', async (c) => {
   if (!Number.isSafeInteger(id) || id <= 0) return c.json({ ok: false, error: { code: 'VALIDATION', message: '提交编号无效' } }, 400);
   const parsed = confirmCheckinSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对实际总人数（1–20人）、儿童人数（0至总人数）、宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注' } }, 400);
-  const { checkin, gift } = confirmCheckin(id, parsed.data);
+  const { checkin, gift } = confirmCheckin(id, parsed.data, c.get('user'));
   return c.json({ ok: true, data: checkinToDTO(checkin, gift) });
 });
 

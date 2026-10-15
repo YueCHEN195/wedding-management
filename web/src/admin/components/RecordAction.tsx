@@ -8,7 +8,7 @@ export interface RecordActionTarget { entity: LifecycleEntity; id: number; actio
 export const ACTION_LABEL: Record<LifecycleAction, string> = { archive: '归档宾客', restore: '恢复记录', reject: '驳回提交', cancel: '撤销确认', void: '作废礼金' };
 function History({ rows }: { rows: OperationLogDTO[] }) {
   return <List size="small" locale={{ emptyText: '暂无操作记录' }} dataSource={rows} renderItem={(r) => <List.Item>
-    <div>{formatDateTime(r.createdAt)} · {r.actorName} · {r.action === 'attendance' ? '补记／更正到场人数' : ACTION_LABEL[r.action as LifecycleAction] ?? r.action}<br />{r.detail && <>{r.detail}<br /></>}原因：{r.reason}</div>
+    <div>{formatDateTime(r.createdAt)} · {r.actorName} · {r.action === 'create' ? '登记礼金' : r.action === 'edit' ? '更正礼金' : r.action === 'attendance' ? '补记／更正到场人数' : ACTION_LABEL[r.action as LifecycleAction] ?? r.action}<br />{r.detail && <>{r.detail}<br /></>}原因：{r.reason}</div>
   </List.Item>} />;
 }
 export function RecordAction({ target, onClose }: { target: RecordActionTarget; onClose: () => void }) {

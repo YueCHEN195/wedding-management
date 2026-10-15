@@ -5,6 +5,7 @@ import { db, sqlite } from '../db/client';
 import { checkins, checkinSubmissions, gifts, guests, operationLogs, type CheckinRow } from '../db/schema';
 import { findGuestCandidates, matchOrCreateGuest } from '../lib/guest';
 import type { SessionPayload } from '../auth/jwt';
+import { insertGiftWithAudit } from './gifts';
 import { MAX_HEADCOUNT } from '../../shared/constraints';
 import { generateToken, now } from '../lib/util';
 
@@ -89,7 +90,7 @@ export function submitSelfCheckin(input: z.infer<typeof selfCheckinSchema>) {
   }).immediate();
 }
 
-export function createManualCheckin(input: z.infer<typeof manualCheckinSchema>) {
+export function createManualCheckin(input: z.infer<typeof manualCheckinSchema>, actor: SessionPayload) {
   const payloadHash = digest(JSON.stringify({ action: 'manual', guestName: input.guestName, guestId: input.guestId ?? null,
     amount: input.amount, method: input.method, note: input.note, actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount, ...(input.newGuest ? { newGuest: input.newGuest } : {}) }));
   return sqlite.transaction(() => {
@@ -100,14 +101,14 @@ export function createManualCheckin(input: z.infer<typeof manualCheckinSchema>) 
     const ts = now();
     const row = db.insert(checkins).values({ guestId: matched.id, guestName: matched.name, source: 'manual',
       status: 'confirmed', note: input.note, submittedAt: ts, confirmedAt: ts, actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount }).returning().get();
-    if (input.amount > 0) db.insert(gifts).values({ guestId: matched.id, guestName: matched.name, amount: input.amount,
-      method: input.method, note: input.note, checkinId: row.id, recordedAt: ts }).run();
+    if (input.amount > 0) insertGiftWithAudit({ guestId: matched.id, guestName: matched.name, amount: input.amount,
+      method: input.method, note: input.note, checkinId: row.id, recordedAt: ts }, actor, '手动补录签到时登记实收礼金');
     remember(input.submissionKey, payloadHash, row.id);
     return result(row);
   }).immediate();
 }
 
-export function confirmCheckin(id: number, input: z.infer<typeof confirmCheckinSchema>) {
+export function confirmCheckin(id: number, input: z.infer<typeof confirmCheckinSchema>, actor: SessionPayload) {
   return sqlite.transaction(() => {
     const existing = db.select().from(checkins).where(eq(checkins.id, id)).get();
     if (!existing) throw new CheckinError('NOT_FOUND', '提交不存在', 404);
@@ -120,8 +121,8 @@ export function confirmCheckin(id: number, input: z.infer<typeof confirmCheckinS
     const row = db.update(checkins).set({ status: 'confirmed', confirmedAt: now(), guestId: matched.id, guestName: matched.name, note: input.note, actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount })
       .where(and(eq(checkins.id, id), eq(checkins.status, 'pending'))).returning().get();
     if (!row) throw new CheckinError('CONFLICT', '该提交已被处理，请刷新后查看');
-    if (input.amount > 0) db.insert(gifts).values({ guestId: matched.id, guestName: matched.name, amount: input.amount,
-      method: input.method, note: input.note, checkinId: id, recordedAt: now() }).run();
+    if (input.amount > 0) insertGiftWithAudit({ guestId: matched.id, guestName: matched.name, amount: input.amount,
+      method: input.method, note: input.note, checkinId: id, recordedAt: now() }, actor, '现场审核签到时登记实收礼金');
     return result(row);
   }).immediate();
 }
