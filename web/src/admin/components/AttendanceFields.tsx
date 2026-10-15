@@ -10,9 +10,9 @@ export function attendanceValues(v: AttendanceValues) {
   }
   return { actualHeadcount, actualChildrenCount };
 }
-export function AttendanceFields() {
+export function AttendanceFields({ showHint = true }: { showHint?: boolean }) {
   return <>
-    <Typography.Paragraph type="secondary">按现场实际到场填写；总人数包含儿童，与请柬回执的预计人数分别记录。</Typography.Paragraph>
+    {showHint && <Typography.Paragraph type="secondary">按现场实际到场填写；总人数包含儿童，与请柬回执的预计人数分别记录。</Typography.Paragraph>}
     <Form.Item name="actualHeadcountInput" label="实际总人数（含儿童）" rules={[{ validator: (_, v) => {
       const n = parseHeadcount(v);
       return n != null && n >= 1 ? Promise.resolve() : Promise.reject(new Error('请填1–20的整数'));

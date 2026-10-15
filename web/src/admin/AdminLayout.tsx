@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { Layout, Menu, Tag, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,7 +17,16 @@ const MENU = [
 
 const STAFF_MENU_KEYS = ['/admin/review', '/admin/checkins', '/admin/gifts', '/admin/guests'];
 
+export interface AdminOutletContext {
+  registerNavigationGuard: (guard: () => Promise<boolean>) => () => void;
+}
 export function AdminLayout() {
+  const navigationGuard = useRef<(() => Promise<boolean>) | null>(null);
+  const registerNavigationGuard = useCallback((guard: () => Promise<boolean>) => {
+    navigationGuard.current = guard;
+    return () => { if (navigationGuard.current === guard) navigationGuard.current = null; };
+  }, []);
+  const canNavigate = async () => !navigationGuard.current || await navigationGuard.current();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -42,7 +52,7 @@ export function AdminLayout() {
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menu}
-          onClick={({ key }) => navigate(key)}
+          onClick={async ({ key }) => { if (key !== location.pathname && await canNavigate()) navigate(key); }}
         />
       </Layout.Sider>
       <Layout>
@@ -63,6 +73,7 @@ export function AdminLayout() {
             <Typography.Text>{me?.username}</Typography.Text>
             <a
               onClick={async () => {
+                if (!await canNavigate()) return;
                 await api.logout();
                 await replaceSession(queryClient, null);
                 navigate('/login', { replace: true });
@@ -73,7 +84,7 @@ export function AdminLayout() {
           </div>
         </Layout.Header>
         <Layout.Content style={{ padding: 16 }}>
-          <Outlet />
+          <Outlet context={{ registerNavigationGuard } satisfies AdminOutletContext} />
         </Layout.Content>
       </Layout>
     </Layout>

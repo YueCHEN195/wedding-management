@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, desc, eq, like } from 'drizzle-orm';
+import { and, asc, desc, eq, like } from 'drizzle-orm';
 import { db } from '../db/client';
 import { checkins, gifts, guests } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
@@ -63,7 +63,7 @@ checkinRoutes.get('/pending', (c) => {
     .select()
     .from(checkins)
     .where(eq(checkins.status, 'pending'))
-    .orderBy(desc(checkins.submittedAt))
+    .orderBy(asc(checkins.submittedAt), asc(checkins.id))
     .all();
   const candidatesByName = new Map<string, ReturnType<typeof findGuestCandidates>>();
   const data = all.map((r) => {

@@ -173,3 +173,14 @@ test('签到候选按宾客编号提供各自最新回执的总人数与儿童�
   const candidates = (await request('/api/checkins/candidates?name='+encodeURIComponent('同名测试'))).body.data;
   assert.deepEqual(candidates.map((g: any) => [g.id, g.headcount, g.childrenCount]), [[first, 5, 2], [second, 3, 1]]);
 });
+
+
+test('现场待审队列按提交先后排列，同一时间按编号稳定排序且不混入已处理记录', async () => {
+  const insert = sqlite.prepare("INSERT INTO checkins (guest_name,status,submitted_at) VALUES (?,?,?)");
+  const newer = Number(insert.run('较晚提交', 'pending', 3000).lastInsertRowid);
+  const first = Number(insert.run('先提交', 'pending', 1000).lastInsertRowid);
+  const second = Number(insert.run('同时间后登记', 'pending', 1000).lastInsertRowid);
+  insert.run('已处理', 'confirmed', 500);
+  const items = (await request('/api/checkins/pending')).body.data;
+  assert.deepEqual(items.map((r: any) => r.id), [first, second, newer]);
+});
