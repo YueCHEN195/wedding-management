@@ -1,3 +1,4 @@
+import { InputError } from './validation';
 import { randomBytes } from 'node:crypto';
 
 export function generateToken(): string {
@@ -17,9 +18,15 @@ export interface PageParams {
 
 export function parsePage(url: string, defaultSize = 20, maxSize = 100): PageParams {
   const u = new URL(url);
-  const page = Math.max(1, Number(u.searchParams.get('page') ?? 1) || 1);
-  const rawSize = Number(u.searchParams.get('pageSize') ?? defaultSize) || defaultSize;
-  const pageSize = Math.min(maxSize, Math.max(1, rawSize));
+  const integer = (key: string, fallback: number) => {
+    const raw = u.searchParams.get(key);
+    if (raw == null) return fallback;
+    if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(Number(raw))) throw new InputError('页码和每页条数必须为有限正整数');
+    return Number(raw);
+  };
+  const page = integer('page', 1);
+  const pageSize = Math.min(maxSize, integer('pageSize', defaultSize));
+  if (!Number.isSafeInteger((page - 1) * pageSize)) throw new InputError('页码过大，请重新选择');
   return { page, pageSize, offset: (page - 1) * pageSize };
 }
 

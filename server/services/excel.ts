@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { guestCreateSchema } from '../lib/validation';
 import type { Side } from '../../shared/types';
 
 export interface SheetSpec {
@@ -82,13 +83,18 @@ export async function parseGuestWorkbook(buffer: Buffer): Promise<ParseGuestResu
       continue;
     }
     const sideRaw = cellText(row, sideCol);
-    guests.push({
+    const parsed = guestCreateSchema.safeParse({
       name,
       salutation: cellText(row, salutationCol) || null,
       phone: cellText(row, phoneCol) || null,
       groupName: cellText(row, groupCol) || null,
-      side: sideRaw ? SIDE_MAP[sideRaw] ?? null : null,
+      side: sideRaw ? SIDE_MAP[sideRaw] ?? sideRaw : null,
     });
+    if (!parsed.success) {
+      failed.push({ row: r, reason: '请核对姓名长度（1–50字）、归属方（男方／女方／双方）及各字段长度' });
+      continue;
+    }
+    guests.push({ ...parsed.data, side: parsed.data.side ?? null });
   }
   return { guests, failed };
 }

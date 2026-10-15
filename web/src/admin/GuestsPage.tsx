@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Alert,
   Button,
   Descriptions,
   Drawer,
@@ -12,11 +13,13 @@ import {
   Space,
   Table,
   Tag,
+  Tabs,
   Typography,
   Upload,
   message,
 } from 'antd';
 import { DownloadOutlined, ImportOutlined, PlusOutlined, PictureOutlined } from '@ant-design/icons';
+import { MAX_GROUP_LENGTH, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
 import type { ColumnsType } from 'antd/es/table';
 import { RecordAction, RecordHistory, type RecordActionTarget } from './components/RecordAction';
 import { api, ApiError, type GuestListParams } from '@/api/client';
@@ -109,6 +112,7 @@ export function GuestsPage() {
         <Tag color={r.archivedAt != null ? 'default' : STATUS_COLOR[v]}>{r.archivedAt != null ? '已归档' : STATUS_LABEL[v]}{r.attending ? ` · ${ATTENDING_LABEL[r.attending]}` : ''}</Tag>
       ),
     },
+    { title: '归档时间', dataIndex: 'archivedAt', width: 170, render: formatDateTime },
     { title: '备注', dataIndex: 'note', ellipsis: true, render: (v) => v ?? '-' },
     {
       title: '操作',
@@ -137,15 +141,20 @@ export function GuestsPage() {
     <div>
       {action && <RecordAction key={`${action.id}-${action.action}`} target={action} onClose={() => { setAction(null); setDetailId(null); }} />}
       {historyId != null && <RecordHistory entity="guest" id={historyId} onClose={() => setHistoryId(null)} />}
+      <Typography.Title level={4}>宾客管理</Typography.Title>
+      <Tabs activeKey={params.archived ?? 'active'} items={[{ key: 'active', label: '当前宾客' }, { key: 'only', label: '已归档宾客' }, { key: 'all', label: '全部宾客' }]}
+        onChange={(v) => setParams((p) => ({ page: 1, pageSize: p.pageSize, archived: v === 'only' ? 'only' : v === 'all' ? 'all' : undefined }))} />
+      {params.archived && <Alert type="info" showIcon style={{ marginBottom: 16 }} title="归档保留回执、签到和礼金记录。点击姓名查看详情，点击操作记录查看原因和操作者；恢复前仍需核对影响。" />}
       <Space style={{ marginBottom: 16 }} wrap>
-        <Select value={params.archived ?? 'active'} style={{ width: 130 }} options={[{ value: 'active', label: '当前宾客' }, { value: 'only', label: '已归档宾客' }, { value: 'all', label: '全部宾客' }]} onChange={(v) => setParams((p) => ({ ...p, archived: v === 'only' ? 'only' : v === 'all' ? 'all' : undefined, page: 1 }))} />
         <Input.Search
+          key={`search-${params.archived ?? 'active'}`}
           placeholder="姓名 / 手机号"
           allowClear
           style={{ width: 200 }}
           onSearch={(v) => setParams((p) => ({ ...p, keyword: v, page: 1 }))}
         />
         <Select
+          value={params.status}
           placeholder="状态"
           allowClear
           style={{ width: 120 }}
@@ -153,6 +162,7 @@ export function GuestsPage() {
           onChange={(v) => setParams((p) => ({ ...p, status: v, page: 1 }))}
         />
         <Select
+          value={params.groupName}
           placeholder="分组"
           allowClear
           style={{ width: 120 }}
@@ -160,6 +170,7 @@ export function GuestsPage() {
           onChange={(v) => setParams((p) => ({ ...p, groupName: v, page: 1 }))}
         />
         <Select
+          value={params.side}
           placeholder="归属方"
           allowClear
           style={{ width: 110 }}
@@ -175,12 +186,13 @@ export function GuestsPage() {
               新增宾客
             </Button>
             <Upload
-              accept=".xlsx,.xls"
+              accept=".xlsx"
               showUploadList={false}
               beforeUpload={async (file) => {
                 try {
                   const r = await api.guests.import(file);
-                  message.success(`导入成功 ${r.created} 条${r.failed.length ? `，失败 ${r.failed.length} 条` : ''}`);
+                  if (r.failed.length) Modal.warning({ title: `已导入${r.created}位，${r.failed.length}行未导入`, content: <div style={{ maxHeight: 300, overflowY: 'auto' }}>{r.failed.map((f) => <p key={f.row}>第{f.row}行：{f.reason}</p>)}</div> });
+                  else message.success(`导入成功 ${r.created} 条`);
                   invalidate();
                 } catch (e) {
                   message.error(e instanceof ApiError ? e.message : '导入失败');
@@ -202,11 +214,12 @@ export function GuestsPage() {
       </Space>
 
       <Table
+        locale={{ emptyText: list.isError ? '加载失败，请刷新重试' : params.archived === 'only' ? '暂无已归档宾客' : '暂无符合条件的宾客' }}
         rowKey="id"
         columns={columns}
         dataSource={list.data?.items ?? []}
         loading={list.isLoading}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1270 }}
         pagination={{
           current: params.page,
           pageSize: params.pageSize,
@@ -230,14 +243,14 @@ export function GuestsPage() {
           onFinish={(v) => save.mutate(v)}
           initialValues={{ side: 'both' }}
         >
-          <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-            <Input />
+          <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, max: MAX_NAME_LENGTH, message: '请填写姓名（1–50字）' }]}>
+            <Input maxLength={MAX_NAME_LENGTH} />
           </Form.Item>
           <Form.Item name="salutation" label="称谓（用于请柬称呼）">
             <Input placeholder="如：张先生" />
           </Form.Item>
           <Form.Item name="phone" label="手机号">
-            <Input />
+            <Input maxLength={30} />
           </Form.Item>
           <Form.Item name="groupName" label="分组">
             <Input placeholder="如：朋友 / 同事 / 亲戚" />

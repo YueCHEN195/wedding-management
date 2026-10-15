@@ -1,3 +1,4 @@
+import { MAX_HEADCOUNT, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -341,7 +342,7 @@ export function InvitePage() {
                   <label htmlFor="rsvp-name" style={{ display: 'block', marginBottom: 6 }}>您的姓名</label>
                   <input
                     id="rsvp-name"
-                    maxLength={50}
+                    maxLength={MAX_NAME_LENGTH}
                     value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
                     placeholder="请输入姓名"
@@ -383,7 +384,7 @@ export function InvitePage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <button onClick={() => { setHeadcount((n) => Math.max(1, n - 1)); setChildren((n) => Math.min(n, Math.max(1, headcount - 1))); }} style={stepBtn} aria-label="减少出席人数">-</button>
                       <span style={{ minWidth: 24, textAlign: 'center', fontSize: 18 }}>{headcount}</span>
-                      <button onClick={() => setHeadcount((n) => Math.min(20, n + 1))} style={stepBtn} aria-label="增加出席人数">+</button>
+                      <button onClick={() => setHeadcount((n) => Math.min(MAX_HEADCOUNT, n + 1))} style={stepBtn} aria-label="增加出席人数">+</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -402,7 +403,7 @@ export function InvitePage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}
-                maxLength={500}
+                maxLength={MAX_TEXT_LENGTH}
                 placeholder="写下您的祝福…"
                 style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ddd', fontSize: 15, resize: 'vertical' }}
               />

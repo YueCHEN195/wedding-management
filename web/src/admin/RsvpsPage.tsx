@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { parseHeadcount } from '@shared/numericInput';
+import { MAX_HEADCOUNT, MAX_TEXT_LENGTH } from '@shared/constraints';
 import { api, ApiError } from '@/api/client';
 import type { Attending, RsvpDTO } from '@shared/types';
 import { ATTENDING_COLOR, ATTENDING_LABEL, formatDateTime } from '@/lib/format';
@@ -14,12 +16,14 @@ export function RsvpsPage() {
   });
   const [editing, setEditing] = useState<RsvpDTO | null>(null);
   const [form] = Form.useForm();
+  const attending = Form.useWatch('attending', form);
 
   const list = useQuery({ queryKey: ['rsvps', params], queryFn: () => api.rsvps.list(params) });
   const s = list.data?.summary;
 
   const save = useMutation({
-    mutationFn: (values: Partial<RsvpDTO>) => api.rsvps.update(editing!.id, values),
+    mutationFn: (values: { attending: Attending; headcount: string; childrenCount: string; message?: string }) =>
+      api.rsvps.update(editing!.id, { ...values, headcount: parseHeadcount(values.headcount)!, childrenCount: parseHeadcount(values.childrenCount)! }),
     onSuccess: () => {
       message.success('已保存');
       setEditing(null);
@@ -50,7 +54,8 @@ export function RsvpsPage() {
         <a aria-disabled={r.guestArchived} style={r.guestArchived ? { color: '#999', pointerEvents: 'none' } : undefined}
           onClick={() => {
             setEditing(r);
-            form.setFieldsValue(r);
+            form.resetFields();
+            form.setFieldsValue({ ...r, headcount: String(r.attending === 'yes' ? r.headcount : 0), childrenCount: String(r.attending === 'yes' ? r.childrenCount : 0) });
           }}
         >
           修改
@@ -108,17 +113,25 @@ export function RsvpsPage() {
         destroyOnClose
       >
         <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)}>
-          <Form.Item name="attending" label="是否出席">
-            <Select options={Object.entries(ATTENDING_LABEL).map(([value, label]) => ({ value, label }))} />
+          <Form.Item name="attending" label="是否出席" rules={[{ required: true, message: '请选择出席状态' }]}>
+            <Select options={Object.entries(ATTENDING_LABEL).map(([value, label]) => ({ value, label }))} onChange={(v) => {
+              if (v !== 'yes') form.setFieldsValue({ headcount: '0', childrenCount: '0' });
+              else if (!Number(form.getFieldValue('headcount'))) form.setFieldValue('headcount', '1');
+            }} />
           </Form.Item>
-          <Form.Item name="headcount" label="出席人数">
-            <InputNumber min={0} style={{ width: '100%' }} />
+          <Typography.Paragraph type="secondary">总人数包含儿童，最多{MAX_HEADCOUNT}人；不出席和待定均按0人保存。</Typography.Paragraph>
+          <Form.Item name="headcount" label="出席总人数（含儿童）" dependencies={['attending']} rules={[{ required: true, message: '请填写总人数' }, ({ getFieldValue }) => ({ validator: (_, v) =>
+            parseHeadcount(v) != null && parseHeadcount(v)! >= (getFieldValue('attending') === 'yes' ? 1 : 0)
+              ? Promise.resolve() : Promise.reject(new Error(`请填写${getFieldValue('attending') === 'yes' ? '1' : '0'}–${MAX_HEADCOUNT}的整数`)) })]}>
+            <Input inputMode="numeric" maxLength={3} disabled={attending !== 'yes'} placeholder="1–20" />
           </Form.Item>
-          <Form.Item name="childrenCount" label="随行儿童">
-            <InputNumber min={0} style={{ width: '100%' }} />
+          <Form.Item name="childrenCount" label="其中儿童人数" dependencies={['headcount', 'attending']} rules={[{ required: true, message: '请填写儿童人数，没有填0' }, ({ getFieldValue }) => ({ validator: (_, v) =>
+            parseHeadcount(v) != null && (getFieldValue('attending') !== 'yes' || (parseHeadcount(getFieldValue('headcount')) != null && parseHeadcount(v)! <= parseHeadcount(getFieldValue('headcount'))!))
+              ? Promise.resolve() : Promise.reject(new Error('儿童人数须为整数，且不能超过总人数')) })]}>
+            <Input inputMode="numeric" maxLength={3} disabled={attending !== 'yes'} placeholder="没有儿童填0" />
           </Form.Item>
-          <Form.Item name="message" label="祝福留言">
-            <Input.TextArea rows={3} />
+          <Form.Item name="message" label="祝福留言" rules={[{ max: MAX_TEXT_LENGTH, message: `留言最多${MAX_TEXT_LENGTH}字` }]}>
+            <Input.TextArea rows={3} maxLength={MAX_TEXT_LENGTH} showCount />
           </Form.Item>
         </Form>
       </Modal>

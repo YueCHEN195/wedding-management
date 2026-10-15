@@ -6,7 +6,7 @@ import { requireAuth, type AppEnv } from '../auth/middleware';
 import { checkinToDTO } from '../lib/dto';
 import { parsePage, str } from '../lib/util';
 import { findGuestCandidates, GuestMatchError } from '../lib/guest';
-import type { CheckinStatus } from '../../shared/types';
+import { enumQuery, inputErrorHandler } from '../lib/validation';
 import { CheckinError, confirmCheckin, confirmCheckinSchema, createManualCheckin, manualCheckinSchema } from '../services/checkins';
 
 export const checkinRoutes = new Hono<AppEnv>();
@@ -15,7 +15,7 @@ checkinRoutes.onError((err, c) => {
   if (err instanceof GuestMatchError || err instanceof CheckinError) {
     return c.json({ ok: false, error: { code: err.code, message: err.message } }, err.status);
   }
-  throw err;
+  return inputErrorHandler(err, c);
 });
 
 /** 只在登录后的审核端展示同名候选，不向自助签到端公开名单。 */
@@ -31,11 +31,11 @@ checkinRoutes.get('/candidates', (c) => {
 checkinRoutes.get('/', (c) => {
   const { page, pageSize, offset } = parsePage(c.req.url);
   const url = new URL(c.req.url);
-  const status = url.searchParams.get('status');
+  const status = enumQuery(url.searchParams.get('status'), ['pending', 'confirmed', 'rejected', 'cancelled'] as const);
   const keyword = str(url.searchParams.get('keyword'));
 
   const conds = [];
-  if (status) conds.push(eq(checkins.status, status as CheckinStatus));
+  if (status) conds.push(eq(checkins.status, status));
   if (keyword) conds.push(like(checkins.guestName, `%${keyword}%`));
   const where = conds.length ? and(...conds) : undefined;
 

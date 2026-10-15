@@ -1,24 +1,25 @@
 import { Hono } from 'hono';
-import { and, desc, eq, like, or } from 'drizzle-orm';
+import { and, desc, eq, like } from 'drizzle-orm';
 import { db, sqlite } from '../db/client';
 import { guests, rsvps } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { rsvpToDTO } from '../lib/dto';
-import { now, optionalStr, parsePage, str } from '../lib/util';
-import type { Attending } from '../../shared/types';
+import { now, parsePage, str } from '../lib/util';
+import { enumQuery, inputErrorHandler, normalizedRsvp, parseId, parseInput, rsvpInputSchema, rsvpPatchSchema, RSVP_INPUT_MESSAGE } from '../lib/validation';
 
 export const rsvpRoutes = new Hono<AppEnv>();
 rsvpRoutes.use('*', requireAuth);
+rsvpRoutes.onError(inputErrorHandler);
 
 rsvpRoutes.get('/', (c) => {
   const { page, pageSize, offset } = parsePage(c.req.url);
   const url = new URL(c.req.url);
   const keyword = str(url.searchParams.get('keyword'));
-  const attending = url.searchParams.get('attending');
+  const attending = enumQuery(url.searchParams.get('attending'), ['yes', 'no', 'maybe'] as const);
 
   const conds = [];
   if (keyword) conds.push(like(rsvps.guestName, `%${keyword}%`));
-  if (attending) conds.push(eq(rsvps.attending, attending as Attending));
+  if (attending) conds.push(eq(rsvps.attending, attending));
   const where = conds.length ? and(...conds) : undefined;
 
   const all = db.select().from(rsvps).where(where).orderBy(desc(rsvps.submittedAt)).all();
@@ -43,17 +44,16 @@ rsvpRoutes.get('/', (c) => {
 });
 
 rsvpRoutes.patch('/:id', requireAdmin, async (c) => {
-  const id = Number(c.req.param('id'));
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const patch: Partial<typeof rsvps.$inferInsert> = { updatedAt: now() };
-  if ('attending' in body) patch.attending = str(body.attending) as Attending;
-  if ('headcount' in body) patch.headcount = Math.max(0, Number(body.headcount) || 0);
-  if ('childrenCount' in body) patch.childrenCount = Math.max(0, Number(body.childrenCount) || 0);
-  if ('message' in body) patch.message = optionalStr(body.message);
+  const id = parseId(c.req.param('id'));
+  const body = parseInput(rsvpPatchSchema, await c.req.json().catch(() => null), RSVP_INPUT_MESSAGE);
   const row = sqlite.transaction(() => {
     const existing = db.select().from(rsvps).where(eq(rsvps.id, id)).get();
     if (!existing) return null;
     if (existing.guestId != null && db.select().from(guests).where(eq(guests.id, existing.guestId)).get()?.archivedAt != null) return null;
+    const values = normalizedRsvp(parseInput(rsvpInputSchema, {
+      attending: existing.attending, headcount: existing.headcount, childrenCount: existing.childrenCount, message: existing.message, ...body,
+    }, RSVP_INPUT_MESSAGE));
+    const patch = { ...values, updatedAt: now() };
     const updated = db.update(rsvps).set(patch).where(eq(rsvps.id, id)).returning().get();
     if (existing.guestId != null) {
       db.update(guests).set({ status: 'rsvp', updatedAt: patch.updatedAt }).where(eq(guests.id, existing.guestId)).run();

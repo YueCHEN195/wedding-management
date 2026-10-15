@@ -1,26 +1,28 @@
 import { Hono } from 'hono';
 import { and, desc, eq, isNull, isNotNull, like } from 'drizzle-orm';
 import { db, sqlite } from '../db/client';
-import { gifts } from '../db/schema';
+import { gifts, guests } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { giftToDTO } from '../lib/dto';
-import { now, optionalStr, parsePage, str } from '../lib/util';
+import { now, parsePage, str } from '../lib/util';
+import { enumQuery, giftCreateSchema, giftPatchSchema, GIFT_INPUT_MESSAGE, InputError, inputErrorHandler, parseId, parseInput } from '../lib/validation';
 import type { GiftMethod } from '../../shared/types';
 
 export const giftRoutes = new Hono<AppEnv>();
 giftRoutes.use('*', requireAuth);
+giftRoutes.onError(inputErrorHandler);
 
 giftRoutes.get('/', (c) => {
   const { page, pageSize, offset } = parsePage(c.req.url);
   const url = new URL(c.req.url);
-  const method = url.searchParams.get('method');
+  const method = enumQuery(url.searchParams.get('method'), ['cash', 'wechat', 'alipay'] as const);
   const keyword = str(url.searchParams.get('keyword'));
 
   const conds = [];
-  const state = url.searchParams.get('state');
+  const state = enumQuery(url.searchParams.get('state'), ['voided', 'all'] as const);
   if (state === 'voided') conds.push(isNotNull(gifts.voidedAt));
   else if (state !== 'all') conds.push(isNull(gifts.voidedAt));
-  if (method) conds.push(eq(gifts.method, method as GiftMethod));
+  if (method) conds.push(eq(gifts.method, method));
   if (keyword) conds.push(like(gifts.guestName, `%${keyword}%`));
   const where = conds.length ? and(...conds) : undefined;
 
@@ -54,37 +56,20 @@ giftRoutes.get('/', (c) => {
 });
 
 giftRoutes.post('/', requireAdmin, async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const name = str(body.guestName);
-  const amount = Number(body.amount);
-  if (!name) return c.json({ ok: false, error: { code: 'VALIDATION', message: '姓名必填' } }, 400);
-  if (!Number.isFinite(amount) || amount < 0) {
-    return c.json({ ok: false, error: { code: 'VALIDATION', message: '金额不合法' } }, 400);
-  }
-  const row = db
-    .insert(gifts)
-    .values({
-      guestId: body.guestId != null ? Number(body.guestId) : null,
-      guestName: name,
-      amount,
-      method: (optionalStr(body.method) as GiftMethod | null) ?? 'cash',
-      note: optionalStr(body.note),
-      checkinId: null,
-      recordedAt: now(),
-    })
-    .returning()
-    .get();
+  const body = parseInput(giftCreateSchema, await c.req.json().catch(() => null), GIFT_INPUT_MESSAGE);
+  const row = sqlite.transaction(() => {
+    if (body.guestId != null) {
+      const guest = db.select().from(guests).where(eq(guests.id, body.guestId)).get();
+      if (!guest || guest.name !== body.guestName) throw new InputError('所选宾客不存在或与姓名不符，请重新核对宾客编号');
+    }
+    return db.insert(gifts).values({ ...body, guestId: body.guestId ?? null, checkinId: null, recordedAt: now() }).returning().get();
+  }).immediate();
   return c.json({ ok: true, data: giftToDTO(row) });
 });
 
 giftRoutes.patch('/:id', requireAdmin, async (c) => {
-  const id = Number(c.req.param('id'));
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const patch: Partial<typeof gifts.$inferInsert> = {};
-  if ('guestName' in body && str(body.guestName)) patch.guestName = str(body.guestName);
-  if ('amount' in body && Number.isFinite(Number(body.amount))) patch.amount = Math.max(0, Number(body.amount));
-  if ('method' in body) patch.method = str(body.method) as GiftMethod;
-  if ('note' in body) patch.note = optionalStr(body.note);
+  const id = parseId(c.req.param('id'));
+  const patch = parseInput(giftPatchSchema, await c.req.json().catch(() => null), GIFT_INPUT_MESSAGE + '；编辑时不能改名、改绑宾客或修改作废状态');
   const row = sqlite.transaction(() => {
     const current = db.select().from(gifts).where(eq(gifts.id, id)).get();
     if (!current || current.voidedAt != null) return null;

@@ -149,7 +149,7 @@ export const api = {
       apiFetch<GiftListDTO>(`/api/gifts${qs(p)}`),
     create: (data: { guestName: string; guestId?: number; amount: number; method: GiftMethod; note?: string }) =>
       apiFetch<GiftDTO>('/api/gifts', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<GiftDTO>) =>
+    update: (id: number, data: { amount?: number; method?: GiftMethod; note?: string | null }) =>
       apiFetch<GiftDTO>(`/api/gifts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 

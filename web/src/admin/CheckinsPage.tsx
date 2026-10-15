@@ -30,7 +30,7 @@ export function CheckinsPage() {
       title: '礼金（元）',
       dataIndex: 'giftAmount',
       width: 110,
-      render: (v: number | null, r) => <>{v == null ? '-' : yuan(v)}{r.giftVoided && <Tag>礼金已作废</Tag>}</>,
+      render: (v: number | null, r) => <>{v == null ? (r.status === 'confirmed' ? '未登记礼金' : '-') : yuan(v)}{r.giftVoided && <Tag>礼金已作废</Tag>}</>,
     },
     {
       title: '方式',

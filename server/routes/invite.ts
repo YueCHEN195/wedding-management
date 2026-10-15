@@ -1,17 +1,18 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { createHash, randomBytes } from 'node:crypto';
-import { z } from 'zod';
 import { and, desc, eq } from 'drizzle-orm';
 import { db, sqlite } from '../db/client';
 import { guests, rsvps } from '../db/schema';
 import { rsvpToDTO } from '../lib/dto';
-import { now, optionalStr, str } from '../lib/util';
+import { now } from '../lib/util';
 import { allow, clientIp } from '../lib/rateLimit';
 import type { Attending } from '../../shared/types';
+import { inputErrorHandler, normalizedRsvp, parseInput, rsvpInputSchema, universalRsvpSchema, RSVP_INPUT_MESSAGE } from '../lib/validation';
 import { env } from '../env';
 
 export const inviteRoutes = new Hono();
+inviteRoutes.onError(inputErrorHandler);
 inviteRoutes.use('*', async (c, next) => {
   c.header('Cache-Control', 'no-store');
   await next();
@@ -20,17 +21,6 @@ inviteRoutes.use('*', async (c, next) => {
 const UNIVERSAL_COOKIE = 'wedding_rsvp_edit';
 const isCredential = (value: string | undefined): value is string => !!value && /^[a-f0-9]{64}$/.test(value);
 const credentialHash = (value: string) => createHash('sha256').update(value).digest('hex');
-const universalRsvpSchema = z.object({
-  name: z.string().trim().min(1).max(50),
-  attending: z.enum(['yes', 'no', 'maybe']),
-  headcount: z.number().int().min(0).max(20),
-  childrenCount: z.number().int().min(0).max(20).default(0),
-  message: z.string().trim().max(500).nullable().optional(),
-}).superRefine((value, ctx) => {
-  if (value.attending === 'yes' && (value.headcount < 1 || value.childrenCount > value.headcount)) {
-    ctx.addIssue({ code: 'custom', message: '出席总人数至少为1，儿童人数不能超过总人数' });
-  }
-});
 
 function submitRsvp(opts: {
   guestId: number | null;
@@ -109,11 +99,7 @@ inviteRoutes.post('/rsvp', async (c) => {
   if (!isCredential(token)) {
     return c.json({ ok: false, error: { code: 'RSVP_SESSION_REQUIRED', message: '未能读取本浏览器的回执凭证，请允许Cookie并刷新页面后重试' } }, 409);
   }
-  const parsed = universalRsvpSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    return c.json({ ok: false, error: { code: 'VALIDATION', message: '请检查姓名和出席人数：姓名最多50字、总人数1–20人、儿童人数不超过总人数、留言最多500字' } }, 400);
-  }
-  const body = parsed.data;
+  const body = parseInput(universalRsvpSchema, await c.req.json().catch(() => null), RSVP_INPUT_MESSAGE + '，姓名1–50字');
   const hash = credentialHash(token);
   const data = db.transaction((tx) => {
     const existing = tx.select().from(rsvps)
@@ -160,18 +146,14 @@ inviteRoutes.post('/:token/rsvp', async (c) => {
   }
   const token = c.req.param('token');
   // 请求体可能缓慢到达，读取完成后才在写事务内重新核对当前宾客。
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const attending = (str(body.attending) || 'maybe') as Attending;
+  const body = normalizedRsvp(parseInput(rsvpInputSchema, await c.req.json().catch(() => null), RSVP_INPUT_MESSAGE));
   const data = sqlite.transaction(() => {
     const guest = db.select().from(guests).where(eq(guests.inviteToken, token)).get();
     if (!guest || guest.archivedAt != null) return null;
     return submitRsvp({
       guestId: guest.id,
       guestName: guest.name,
-      attending,
-      headcount: attending === 'yes' ? Math.max(1, Number(body.headcount) || 1) : Number(body.headcount) || 0,
-      childrenCount: Math.max(0, Number(body.childrenCount) || 0),
-      message: optionalStr(body.message),
+      ...body,
       source: 'link',
     });
   }).immediate();

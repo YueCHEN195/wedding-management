@@ -4,34 +4,36 @@ import { db, sqlite } from '../db/client';
 import { checkins, gifts, guests, rsvps } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { checkinToDTO, giftToDTO, guestToDTO, inviteUrl, rsvpToDTO } from '../lib/dto';
-import { generateToken, now, optionalStr, parsePage, str } from '../lib/util';
+import { generateToken, now, parsePage, str } from '../lib/util';
 import { attachmentHeaders, binaryResponse, XLSX_MIME } from '../lib/http';
 import { qrPng } from '../services/qrcode';
 import { renderPoster, zipBuffers } from '../services/media';
 import { buildWorkbook, parseGuestWorkbook } from '../services/excel';
+import { enumQuery, guestCreateSchema, guestPatchSchema, GUEST_INPUT_MESSAGE, inputErrorHandler, InputError, parseId, parseInput } from '../lib/validation';
 import type { RsvpRow } from '../db/schema';
-import type { Attending, GuestStatus, Side } from '../../shared/types';
+import type { Attending } from '../../shared/types';
 
 export const guestRoutes = new Hono<AppEnv>();
 guestRoutes.use('*', requireAuth);
+guestRoutes.onError(inputErrorHandler);
 
 /** 列表（管理员 / 工作人员只读） */
 guestRoutes.get('/', (c) => {
   const { page, pageSize, offset } = parsePage(c.req.url);
   const url = new URL(c.req.url);
   const keyword = str(url.searchParams.get('keyword'));
-  const status = url.searchParams.get('status');
+  const status = enumQuery(url.searchParams.get('status'), ['pending', 'sent', 'viewed', 'rsvp'] as const);
   const groupName = url.searchParams.get('groupName');
-  const side = url.searchParams.get('side');
+  const side = enumQuery(url.searchParams.get('side'), ['male', 'female', 'both'] as const);
 
   const conds = [];
-  const archived = url.searchParams.get('archived');
+  const archived = enumQuery(url.searchParams.get('archived'), ['only', 'all'] as const);
   if (archived === 'only') conds.push(isNotNull(guests.archivedAt));
   else if (archived !== 'all') conds.push(isNull(guests.archivedAt));
   if (keyword) conds.push(or(like(guests.name, `%${keyword}%`), like(guests.phone, `%${keyword}%`)));
-  if (status) conds.push(eq(guests.status, status as GuestStatus));
+  if (status) conds.push(eq(guests.status, status));
   if (groupName) conds.push(eq(guests.groupName, groupName));
-  if (side) conds.push(eq(guests.side, side as Side));
+  if (side) conds.push(eq(guests.side, side));
   const where = conds.length ? and(...conds) : undefined;
 
   const total = db.select({ value: count() }).from(guests).where(where).get()?.value ?? 0;
@@ -66,19 +68,12 @@ guestRoutes.get('/groups', (c) => {
 
 /** 新增 */
 guestRoutes.post('/', requireAdmin, async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const name = str(body.name);
-  if (!name) return c.json({ ok: false, error: { code: 'VALIDATION', message: '姓名必填' } }, 400);
+  const body = parseInput(guestCreateSchema, await c.req.json().catch(() => null), GUEST_INPUT_MESSAGE);
   const ts = now();
   const row = db
     .insert(guests)
     .values({
-      name,
-      salutation: optionalStr(body.salutation),
-      phone: optionalStr(body.phone),
-      groupName: optionalStr(body.groupName),
-      side: (optionalStr(body.side) as Side | null) ?? null,
-      note: optionalStr(body.note),
+      ...body,
       inviteToken: generateToken(),
       status: 'pending',
       createdAt: ts,
@@ -91,19 +86,12 @@ guestRoutes.post('/', requireAdmin, async (c) => {
 
 /** 修改 */
 guestRoutes.patch('/:id', requireAdmin, async (c) => {
-  const id = Number(c.req.param('id'));
+  const id = parseId(c.req.param('id'));
   const existing = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!existing) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
   if (existing.archivedAt != null) return c.json({ ok: false, error: { code: 'GUEST_ARCHIVED', message: '请先恢复已归档宾客再编辑' } }, 409);
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-
-  const patch: Partial<typeof guests.$inferInsert> = { updatedAt: now() };
-  if ('name' in body && str(body.name)) patch.name = str(body.name);
-  if ('salutation' in body) patch.salutation = optionalStr(body.salutation);
-  if ('phone' in body) patch.phone = optionalStr(body.phone);
-  if ('groupName' in body) patch.groupName = optionalStr(body.groupName);
-  if ('side' in body) patch.side = (optionalStr(body.side) as Side | null) ?? null;
-  if ('note' in body) patch.note = optionalStr(body.note);
+  const body = parseInput(guestPatchSchema, await c.req.json().catch(() => null), GUEST_INPUT_MESSAGE);
+  const patch = { ...body, updatedAt: now() };
 
   const row = db.update(guests).set(patch).where(and(eq(guests.id, id), isNull(guests.archivedAt))).returning().get();
   if (!row) return c.json({ ok: false, error: { code: 'CONFLICT', message: '宾客已归档或变更，请刷新后重新核对' } }, 409);
@@ -115,7 +103,7 @@ guestRoutes.delete('/:id', requireAdmin, (c) => c.json({ ok: false, error: { cod
 
 /** 标记已发送 */
 guestRoutes.post('/:id/mark-sent', requireAdmin, (c) => {
-  const id = Number(c.req.param('id'));
+  const id = parseId(c.req.param('id'));
   const row = sqlite.transaction(() => {
     const existing = db.select().from(guests).where(eq(guests.id, id)).get();
     if (!existing || existing.archivedAt != null) return null;
@@ -131,7 +119,7 @@ guestRoutes.post('/:id/mark-sent', requireAdmin, (c) => {
 
 /** 单个宾客详情（回执 / 签到 / 礼金） */
 guestRoutes.get('/:id/detail', requireAdmin, (c) => {
-  const id = Number(c.req.param('id'));
+  const id = parseId(c.req.param('id'));
   const guest = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
   const rsvpRow = db.select().from(rsvps).where(eq(rsvps.guestId, id)).orderBy(desc(rsvps.submittedAt)).get();
@@ -152,7 +140,7 @@ guestRoutes.get('/:id/detail', requireAdmin, (c) => {
 
 /** 专属二维码 */
 guestRoutes.get('/:id/qr', async (c) => {
-  const id = Number(c.req.param('id'));
+  const id = parseId(c.req.param('id'));
   const guest = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
   const buf = await qrPng(inviteUrl(guest.inviteToken), 512);
@@ -161,7 +149,7 @@ guestRoutes.get('/:id/qr', async (c) => {
 
 /** 专属海报 */
 guestRoutes.get('/:id/poster', async (c) => {
-  const id = Number(c.req.param('id'));
+  const id = parseId(c.req.param('id'));
   const guest = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
   const buf = await renderPoster(inviteUrl(guest.inviteToken));
@@ -189,7 +177,7 @@ guestRoutes.post('/import', requireAdmin, async (c) => {
     return c.json({ ok: false, error: { code: 'VALIDATION', message: '请上传 Excel 文件' } }, 400);
   }
   const buffer = Buffer.from(await file.arrayBuffer());
-  const { guests: parsed, failed } = await parseGuestWorkbook(buffer);
+  const { guests: parsed, failed } = await parseGuestWorkbook(buffer).catch(() => { throw new InputError('无法读取Excel文件，请确认是有效的xlsx文件后重试'); });
   const ts = now();
   // 解析在事务外完成；有效行作为一批写入，数据库失败时整批回滚。
   const created = sqlite.transaction(() => {

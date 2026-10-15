@@ -226,3 +226,43 @@ test('编辑宾客的请求体延迟期间被归档，旧编辑不能改写已�
   assert.equal(get('guests', guest).name, '安全操作验收');
   assert.ok(get('guests', guest).archived_at);
 });
+
+
+test('历史视图按归档和撤回分别筛选，保留详情与操作原因且有效汇总排除撤回记录', async () => {
+  const { guest, gift } = fixture();
+  const active = Number(sqlite.prepare("INSERT INTO guests (name,invite_token,created_at,updated_at) VALUES ('当前宾客','active-token',1,1)").run().lastInsertRowid);
+  await apply('guest', guest, 'archive');
+  await apply('gift', gift, 'void');
+  assert.deepEqual((await request('/api/guests')).body.data.items.map((g: any) => g.id), [active]);
+  const archived = (await request('/api/guests?archived=only')).body.data;
+  assert.deepEqual(archived.items.map((g: any) => g.id), [guest]);
+  assert.ok(archived.items[0].archivedAt);
+  assert.equal((await request('/api/guests?archived=all')).body.data.total, 2);
+  assert.equal((await request(`/api/guests/${guest}/detail`)).body.data.gifts[0].id, gift);
+  const withdrawn = (await request('/api/gifts?state=voided')).body.data;
+  assert.equal(withdrawn.items[0].id, gift);
+  assert.equal(withdrawn.items[0].amount, 60000);
+  assert.ok(withdrawn.items[0].voidedAt);
+  assert.equal(withdrawn.summary.total, 0);
+  assert.equal(withdrawn.summary.count, 0);
+  assert.equal((await request(`/api/lifecycle/gift/${gift}/history`)).body.data[0].reason, '核对后的验收操作');
+});
+
+test('无礼金的扫码确认与手动补录均正常签到，后续独立送礼只增加礼金不重复签到', async () => {
+  const submitted = await request('/api/checkin/self', 'POST', { name: '仅签到来宾', submissionKey: randomUUID() });
+  const id = submitted.body.data.id;
+  assert.equal((await request(`/api/checkins/${id}/confirm`, 'PATCH', { amount: 0 })).status, 200);
+  const manual = await request('/api/checkins', 'POST', { guestName: '手动仅签到', submissionKey: randomUUID() });
+  assert.equal(manual.status, 200);
+  assert.equal((await stats()).checkinCount, 2);
+  assert.equal((await stats()).giftCount, 0);
+  assert.equal((await stats()).giftTotal, 0);
+  const records = (await request('/api/checkins')).body.data.items;
+  assert.equal(records.length, 2);
+  assert.ok(records.every((r: any) => r.status === 'confirmed' && r.giftAmount === null && r.giftMethod === null));
+  const guestId = get('checkins', id).guest_id;
+  assert.equal((await request('/api/gifts', 'POST', { guestName: '仅签到来宾', guestId, amount: 12345, method: 'cash' })).status, 200);
+  assert.equal((await stats()).checkinCount, 2);
+  assert.equal((await stats()).giftCount, 1);
+  assert.equal((await stats()).giftTotal, 12345);
+});

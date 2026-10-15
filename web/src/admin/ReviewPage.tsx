@@ -1,18 +1,45 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { Alert, Button, Card, Empty, Form, Image, Input, InputNumber, List, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Form, Image, Input, List, Modal, Radio, Select, Space, Tag, Typography, message } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { RecordAction, type RecordActionTarget } from './components/RecordAction';
 import { api, ApiError } from '@/api/client';
 import type { CheckinDTO, GiftMethod, GuestCandidate, NewCheckinGuest } from '@shared/types';
+import { parseGiftYuan } from '@shared/numericInput';
+import { MAX_TEXT_LENGTH } from '@shared/constraints';
 import { ATTENDING_LABEL, METHOD_LABEL, SIDE_LABEL, formatDateTime } from '@/lib/format';
 
 interface CheckinFormValues {
+  giftReceipt?: 'none' | 'received';
   guestId?: number | 'new';
   newGuest?: NewCheckinGuest;
-  amountYuan?: number;
+  amountYuan?: string;
   method?: GiftMethod;
   note?: string;
+}
+function checkedAmount(v: CheckinFormValues) {
+  if (v.giftReceipt !== 'received') return 0;
+  const amount = parseGiftYuan(v.amountYuan);
+  if (amount == null) throw new ApiError('VALIDATION', '金额须为0.01–100000元，最多两位小数', 400);
+  return amount;
+}
+function OptionalGiftFields() {
+  const form = Form.useFormInstance();
+  const received = Form.useWatch('giftReceipt', form) === 'received';
+  return <>
+    <Form.Item name="giftReceipt" label="礼金登记" rules={[{ required: true }]}>
+      <Radio.Group options={[{ value: 'received', label: '同时登记礼金' }, { value: 'none', label: '仅签到，不登记礼金' }]} />
+    </Form.Item>
+    {!received && <Typography.Paragraph type="secondary">宾客可不赠送礼金，确认后只记录签到。之后收到礼金可到礼金管理单独登记。</Typography.Paragraph>}
+    {received && <>
+      <Form.Item name="amountYuan" label="实收礼金（元）" preserve={false} rules={[{ required: true, message: '请填写实际收到的金额' }, { validator: (_, v) => parseGiftYuan(v) != null ? Promise.resolve() : Promise.reject(new Error('金额须为0.01–100000元，最多两位小数')) }]}>
+        <Input inputMode="decimal" maxLength={12} placeholder="例如：600.00" />
+      </Form.Item>
+      <Form.Item name="method" label="收款方式" preserve={false} rules={[{ required: true, message: '请选择收款方式' }]}>
+        <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />
+      </Form.Item>
+    </>}
+  </>;
 }
 function guestChoice(v: CheckinFormValues) {
   return v.guestId === 'new' ? { newGuest: v.newGuest } : { guestId: v.guestId };
@@ -90,7 +117,7 @@ export function ReviewPage() {
 
   const confirm = useMutation({
     mutationFn: (v: CheckinFormValues) =>
-      api.checkins.confirm(confirming!.id, { ...guestChoice(v), amount: Math.round((v.amountYuan ?? 0) * 100), method: v.method ?? 'wechat', note: v.note }),
+      api.checkins.confirm(confirming!.id, { ...guestChoice(v), amount: checkedAmount(v), method: v.method ?? 'wechat', note: v.note }),
     onSuccess: () => {
       message.success('已确认');
       setConfirming(null);
@@ -109,7 +136,7 @@ export function ReviewPage() {
         guestName: v.guestName,
         submissionKey: manualSubmissionKey!,
         ...guestChoice(v),
-        amount: v.amountYuan ? Math.round(v.amountYuan * 100) : 0,
+        amount: checkedAmount(v),
         method: v.method ?? 'cash',
         note: v.note,
       }),
@@ -163,8 +190,8 @@ export function ReviewPage() {
             renderItem={(item) => (
               <List.Item
                 actions={[
-                  <a key="ok" onClick={() => { form.resetFields(); setConfirming(item); form.setFieldsValue({ amountYuan: 0, method: 'wechat' }); }}>
-                    确认并记礼金
+                  <a key="ok" onClick={() => { form.resetFields(); setConfirming(item); form.setFieldsValue({ giftReceipt: 'received' }); }}>
+                    确认签到
                   </a>,
                   <a key="no" onClick={() => setRecordAction({ entity: 'checkin', id: item.id, action: 'reject' })}>驳回</a>,
                 ]}
@@ -190,14 +217,9 @@ export function ReviewPage() {
       >
         <Form form={form} layout="vertical" onFinish={(v) => confirm.mutate(v)}>
           {confirming && <>{confirming.guestArchived && <Alert type="warning" title="关联宾客已归档，请先联系管理员恢复宾客，或驳回此提交" />}<GuestSelection query={confirmCandidates} /></>}
-          <Form.Item name="amountYuan" label="礼金金额（元，没有礼金填 0）" rules={[{ required: true, message: '请填写金额' }]}>
-            <InputNumber min={0} max={100000} precision={2} style={{ width: '100%' }} placeholder="0" />
-          </Form.Item>
-          <Form.Item name="method" label="方式" rules={[{ required: true }]}>
-            <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />
-          </Form.Item>
-          <Form.Item name="note" label="备注">
-            <Input />
+          <OptionalGiftFields />
+          <Form.Item name="note" label="备注" rules={[{ max: MAX_TEXT_LENGTH, message: '备注最多500字' }]} >
+            <Input maxLength={MAX_TEXT_LENGTH} />
           </Form.Item>
         </Form>
       </Modal>
@@ -211,19 +233,14 @@ export function ReviewPage() {
         okButtonProps={{ disabled: !manualSubmissionKey || !!manualName && (manualCandidates.isFetching || manualCandidates.isError) }}
         destroyOnClose
       >
-        <Form form={manualForm} layout="vertical" onFinish={(v) => manual.mutate(v)} initialValues={{ method: 'cash' }}>
-          <Form.Item name="guestName" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-            <Input />
+        <Form form={manualForm} layout="vertical" onFinish={(v) => manual.mutate(v)} initialValues={{ giftReceipt: 'received' }}>
+          <Form.Item name="guestName" label="姓名" rules={[{ required: true, whitespace: true, max: 30, message: '请填写姓名（1–30字）' }]}>
+            <Input maxLength={30} />
           </Form.Item>
           {manualName && <GuestSelection query={manualCandidates} />}
-          <Form.Item name="amountYuan" label="礼金金额（元，可填 0）">
-            <InputNumber min={0} max={100000} precision={2} style={{ width: '100%' }} placeholder="0" />
-          </Form.Item>
-          <Form.Item name="method" label="方式">
-            <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />
-          </Form.Item>
-          <Form.Item name="note" label="备注">
-            <Input />
+          <OptionalGiftFields />
+          <Form.Item name="note" label="备注" rules={[{ max: MAX_TEXT_LENGTH, message: '备注最多500字' }]} >
+            <Input maxLength={MAX_TEXT_LENGTH} />
           </Form.Item>
         </Form>
       </Modal>
