@@ -62,6 +62,9 @@ export const checkins = sqliteTable('checkins', {
   note: text('note'),
   submittedAt: integer('submitted_at').notNull(),
   confirmedAt: integer('confirmed_at'),
+  // 旧签到保留 NULL，不能用预计人数推算实际到场。
+  actualHeadcount: integer('actual_headcount'),
+  actualChildrenCount: integer('actual_children_count'),
 });
 
 /** 同一次登记的重试结果；多个设备的提交可指向同一签到记录。 */

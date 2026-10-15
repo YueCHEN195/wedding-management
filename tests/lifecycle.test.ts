@@ -33,6 +33,7 @@ const cookies = {
 };
 let ip = 0;
 async function request(path: string, method = 'GET', body?: object, role: 'admin' | 'staff' = 'admin') {
+  if (body && (path === '/api/checkins' || path.endsWith('/confirm'))) body = { actualHeadcount: 1, actualChildrenCount: 0, ...body };
   const response = await app.request(path, { method, headers: { Cookie: cookies[role], 'Content-Type': 'application/json', 'X-Forwarded-For': `192.0.2.${++ip}` }, ...(body ? { body: JSON.stringify(body) } : {}) });
   return { status: response.status, body: await response.json() as any };
 }

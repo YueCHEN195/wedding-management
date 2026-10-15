@@ -15,12 +15,16 @@ function computeSummary(): StatsSummary {
   const allCheckins = db.select().from(checkins).all();
   const allGifts = db.select().from(gifts).all().filter((g) => g.voidedAt == null);
 
+  const confirmed = allCheckins.filter((c) => c.status === 'confirmed');
   return {
     guestTotal: allGuests.length,
     invitedCount: allGuests.filter((g) => g.status !== 'pending').length,
     rsvpCount: allGuests.filter((g) => g.status === 'rsvp').length,
     attendingHeadcount: allRsvps.filter((r) => r.attending === 'yes').reduce((s, r) => s + r.headcount, 0),
-    checkinCount: allCheckins.filter((c) => c.status === 'confirmed').length,
+    checkinCount: confirmed.length,
+    actualHeadcount: confirmed.reduce((s, c) => s + (c.actualHeadcount ?? 0), 0),
+    actualChildrenCount: confirmed.reduce((s, c) => s + (c.actualChildrenCount ?? 0), 0),
+    unknownHeadcountGroups: confirmed.filter((c) => c.actualHeadcount == null).length,
     pendingCheckinCount: allCheckins.filter((c) => c.status === 'pending').length,
     giftTotal: allGifts.reduce((s, g) => s + g.amount, 0),
     giftCount: allGifts.length,

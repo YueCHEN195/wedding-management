@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Card, Col, Row, Statistic, Typography } from 'antd';
+import { Alert, Card, Col, Row, Statistic, Typography } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { api } from '@/api/client';
 import { yuan } from '@/lib/format';
@@ -13,15 +13,16 @@ export function DashboardPage() {
   return (
     <div>
       <Typography.Title level={4}>仪表盘</Typography.Title>
+      {s && s.unknownHeadcountGroups > 0 && <Alert type="warning" showIcon style={{ marginBottom: 16 }} title={`另有${s.unknownHeadcountGroups}组已签到，人数待补记；以下到场人数尚不完整。请到签到记录补记。`} />}
       <Row gutter={[16, 16]}>
         <Col xs={12} md={6}>
           <Card><Statistic title="宾客总数" value={s?.guestTotal ?? 0} loading={summary.isLoading} /></Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card><Statistic title="确认出席人数" value={s?.attendingHeadcount ?? 0} loading={summary.isLoading} /></Card>
+          <Card><Statistic title="预计出席人数（回执）" value={s?.attendingHeadcount ?? 0} loading={summary.isLoading} /></Card>
         </Col>
         <Col xs={12} md={6}>
-          <Card><Statistic title="实际签到人数" value={s?.checkinCount ?? 0} loading={summary.isLoading} /></Card>
+          <Card><Statistic title="已到场人数（已核对）" value={s?.actualHeadcount ?? 0} loading={summary.isLoading} /></Card>
         </Col>
         <Col xs={12} md={6}>
           <Card><Statistic title="礼金总额" prefix="¥" value={yuan(s?.giftTotal ?? 0)} loading={summary.isLoading} /></Card>
@@ -38,6 +39,8 @@ export function DashboardPage() {
         <Col xs={12} md={6}>
           <Card><Statistic title="已邀请" value={s?.invitedCount ?? 0} loading={summary.isLoading} /></Card>
         </Col>
+        <Col xs={12} md={6}><Card><Statistic title="已签到组数" value={s?.checkinCount ?? 0} loading={summary.isLoading} /></Card></Col>
+        <Col xs={12} md={6}><Card><Statistic title="到场儿童（包含在总人数内）" value={s?.actualChildrenCount ?? 0} loading={summary.isLoading} /></Card></Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>

@@ -21,6 +21,7 @@ app.route('/api/checkins', checkinRoutes);
 const cookie = `wedding_session=${await createToken({ id: 1, username: 'staff', role: 'staff' })}`;
 
 async function request(path: string, method = 'GET', body?: object, authenticated = true) {
+  if (body && (path === '/api/checkins' || path.endsWith('/confirm'))) body = { actualHeadcount: 1, actualChildrenCount: 0, ...body };
   const response = await app.request(path, {
     method,
     headers: { 'Content-Type': 'application/json', ...(authenticated ? { Cookie: cookie } : {}) },
@@ -74,7 +75,7 @@ test('工作人员可读取候选辨认信息，但不返回私有凭证、电�
   assert.equal(result.body.data.length, 2);
   assert.equal(result.body.data.find((g: any) => g.id === id).headcount, 3);
   for (const candidate of result.body.data) {
-    assert.deepEqual(Object.keys(candidate).sort(), ['attending', 'checkedIn', 'groupName', 'headcount', 'id', 'name', 'side']);
+    assert.deepEqual(Object.keys(candidate).sort(), ['attending', 'checkedIn', 'childrenCount', 'groupName', 'headcount', 'id', 'name', 'side']);
   }
   assert.equal((await request('/api/checkins/candidates?name=test', 'GET', undefined, false)).status, 401);
 });
@@ -162,4 +163,13 @@ test('唯一匹配仍可直接关联，无匹配仍自动建档', async () => {
   const linked = sqlite.prepare('SELECT guest_id FROM checkins WHERE id=?').get(unknown.body.data.id) as any;
   assert.ok(linked.guest_id);
   assert.equal((sqlite.prepare('SELECT name FROM guests WHERE id=?').get(linked.guest_id) as any).name, '临时测试');
+});
+
+
+test('签到候选按宾客编号提供各自最新回执的总人数与儿童，不混用同名回执', async () => {
+  const first = addGuest(); const second = addGuest('同名测试', '亲戚');
+  const insert = sqlite.prepare("INSERT INTO rsvps (guest_id,guest_name,attending,headcount,children_count,submitted_at,updated_at) VALUES (?,'同名测试','yes',?,?,1,?)");
+  insert.run(first, 2, 0, 1); insert.run(first, 5, 2, 2); insert.run(second, 3, 1, 3);
+  const candidates = (await request('/api/checkins/candidates?name='+encodeURIComponent('同名测试'))).body.data;
+  assert.deepEqual(candidates.map((g: any) => [g.id, g.headcount, g.childrenCount]), [[first, 5, 2], [second, 3, 1]]);
 });

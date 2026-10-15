@@ -19,6 +19,7 @@ app.onError((_, c) => c.json({ ok: false, error: { code: 'INTERNAL', message: '�
 const cookie = `wedding_session=${await createToken({ id: 1, username: 'staff', role: 'staff' })}`;
 let ip = 0;
 async function request(path: string, body: object, method = 'POST') {
+  if (path === '/api/checkins' || path.endsWith('/confirm')) body = { actualHeadcount: 1, actualChildrenCount: 0, ...body };
   const response = await app.request(path, { method, headers: {
     'Content-Type': 'application/json', Cookie: cookie, 'X-Forwarded-For': `127.0.0.${++ip}`,
   }, body: JSON.stringify(body) });
@@ -146,7 +147,7 @@ test('延迟请求体到达时重新读取状态，不能把一条签到确认�
   const first = await self('延迟确认');
   let releaseBody!: () => void;
   const stream = new ReadableStream({ start(controller) {
-    releaseBody = () => { controller.enqueue(new TextEncoder().encode(JSON.stringify({ amount: 60000, method: 'cash' }))); controller.close(); };
+    releaseBody = () => { controller.enqueue(new TextEncoder().encode(JSON.stringify({ actualHeadcount: 1, actualChildrenCount: 0, amount: 60000, method: 'cash' }))); controller.close(); };
   } });
   const slow = app.request(new Request(`http://localhost/api/checkins/${first.body.data.id}/confirm`, {
     method: 'PATCH', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: stream, duplex: 'half',

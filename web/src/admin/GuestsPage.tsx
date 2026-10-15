@@ -292,7 +292,7 @@ export function GuestsPage() {
             <Typography.Title level={5} style={{ marginTop: 16 }}>签到（{detail.data.checkins.length}）</Typography.Title>
             {detail.data.checkins.map((c) => (
               <div key={c.id}>
-                {formatDateTime(c.submittedAt)} · {({ pending: '待审核', confirmed: '已确认', rejected: '已驳回', cancelled: '已撤销' })[c.status]}
+                {formatDateTime(c.submittedAt)} · 实际{c.actualHeadcount == null ? '人数待核对／补记' : `${c.actualHeadcount}人（其中儿童${c.actualChildrenCount ?? 0}人）`} · {({ pending: '待审核', confirmed: '已确认', rejected: '已驳回', cancelled: '已撤销' })[c.status]}
               </div>
             ))}
             <Typography.Title level={5} style={{ marginTop: 16 }}>

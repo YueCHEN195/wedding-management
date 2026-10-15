@@ -112,6 +112,8 @@ export interface CheckinDTO {
   note: string | null;
   submittedAt: number;
   confirmedAt: number | null;
+  actualHeadcount: number | null;
+  actualChildrenCount: number | null;
   giftAmount: number | null;
   giftMethod: GiftMethod | null;
   giftVoided?: boolean;
@@ -126,6 +128,7 @@ export interface GuestCandidate {
   side: Side | null;
   attending: Attending | null;
   headcount: number | null;
+  childrenCount: number | null;
   /** 至少有一条已确认签到；待审核提交不算已签到。 */
   checkedIn: boolean;
 }
@@ -168,6 +171,9 @@ export interface StatsSummary {
   rsvpCount: number;
   attendingHeadcount: number;
   checkinCount: number;
+  actualHeadcount: number;
+  actualChildrenCount: number;
+  unknownHeadcountGroups: number;
   pendingCheckinCount: number;
   giftTotal: number;
   giftCount: number;
@@ -194,6 +200,7 @@ export interface ImportResult {
 export type LifecycleEntity = 'guest' | 'checkin' | 'gift';
 export type LifecycleAction = 'archive' | 'restore' | 'reject' | 'cancel' | 'void';
 export interface OperationLogDTO {
+  detail?: string;
   id: number;
   action: string;
   reason: string;

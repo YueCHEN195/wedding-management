@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { Alert, Button, Card, Empty, Form, Image, Input, List, Modal, Radio, Select, Space, Tag, Typography, message } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { AttendanceFields, attendanceValues, type AttendanceValues } from './components/AttendanceFields';
 import { RecordAction, type RecordActionTarget } from './components/RecordAction';
 import { api, ApiError } from '@/api/client';
 import type { CheckinDTO, GiftMethod, GuestCandidate, NewCheckinGuest } from '@shared/types';
 import { parseGiftYuan } from '@shared/numericInput';
+import { attendanceFromRsvp } from '@shared/attendance';
+import type { FormInstance } from 'antd';
 import { MAX_TEXT_LENGTH } from '@shared/constraints';
 import { ATTENDING_LABEL, METHOD_LABEL, SIDE_LABEL, formatDateTime } from '@/lib/format';
 
-interface CheckinFormValues {
+interface CheckinFormValues extends AttendanceValues {
   giftReceipt?: 'none' | 'received';
   guestId?: number | 'new';
   newGuest?: NewCheckinGuest;
@@ -35,7 +38,7 @@ function OptionalGiftFields() {
       <Form.Item name="amountYuan" label="实收礼金（元）" preserve={false} rules={[{ required: true, message: '请填写实际收到的金额' }, { validator: (_, v) => parseGiftYuan(v) != null ? Promise.resolve() : Promise.reject(new Error('金额须为0.01–100000元，最多两位小数')) }]}>
         <Input inputMode="decimal" maxLength={12} placeholder="例如：600.00" />
       </Form.Item>
-      <Form.Item name="method" label="收款方式" preserve={false} rules={[{ required: true, message: '请选择收款方式' }]}>
+      <Form.Item name="method" label="收款方式" initialValue="cash" preserve={false} rules={[{ required: true, message: '请选择收款方式' }]}>
         <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />
       </Form.Item>
     </>}
@@ -44,6 +47,23 @@ function OptionalGiftFields() {
 function guestChoice(v: CheckinFormValues) {
   return v.guestId === 'new' ? { newGuest: v.newGuest } : { guestId: v.guestId };
 }
+function useRsvpAttendance(form: FormInstance, name: string, query: UseQueryResult<GuestCandidate[], Error>, enabled: boolean) {
+  const selection = Form.useWatch('guestId', form) as number | 'new' | undefined;
+  const lastIdentity = useRef<string | null>(null);
+  useEffect(() => {
+    if (!enabled) { lastIdentity.current = null; return; }
+    if (!query.isSuccess) return;
+    const guest = typeof selection === 'number' ? query.data.find((g) => g.id === selection)
+      : selection !== 'new' && query.data.length === 1 && !query.data[0].checkedIn ? query.data[0] : undefined;
+    const identity = JSON.stringify([name, selection === 'new' ? 'new' : guest?.id ?? null]);
+    // 只在换人或首次打开时带入，后台刷新不能覆盖工作人员已修改的人数。
+    if (lastIdentity.current === identity) return;
+    lastIdentity.current = identity;
+    const defaults = attendanceFromRsvp(guest);
+    form.setFieldsValue({ actualHeadcountInput: String(defaults.actualHeadcount), actualChildrenInput: String(defaults.actualChildrenCount) });
+  }, [enabled, form, name, query.isSuccess, query.data, selection]);
+}
+
 function GuestSelection({ query }: { query: UseQueryResult<GuestCandidate[], Error> }) {
   const form = Form.useFormInstance();
   const selection = Form.useWatch('guestId', form);
@@ -51,7 +71,7 @@ function GuestSelection({ query }: { query: UseQueryResult<GuestCandidate[], Err
   if (query.isError) return <Alert type="error" showIcon title="宾客名单加载失败，请重试后再确认" action={<Button onClick={() => query.refetch()}>重试</Button>} />;
   const candidates = query.data;
   if (candidates.length === 0) return <Alert type="info" title="未找到同名宾客，确认后将自动建立新档案" style={{ marginBottom: 16 }} />;
-  const label = (g: GuestCandidate) => `#${g.id} · ${g.name} · ${g.checkedIn ? '已签到' : '未签到'} · ${g.side ? SIDE_LABEL[g.side] : '归属未填'} · ${g.groupName || '未分组'} · ${g.attending ? ATTENDING_LABEL[g.attending] : '未回执'}${g.attending === 'yes' ? ` ${g.headcount}人` : ''}`;
+  const label = (g: GuestCandidate) => `#${g.id} · ${g.name} · ${g.checkedIn ? '已签到' : '未签到'} · ${g.side ? SIDE_LABEL[g.side] : '归属未填'} · ${g.groupName || '未分组'} · ${g.attending ? ATTENDING_LABEL[g.attending] : '未回执'}${g.attending === 'yes' ? ` ${g.headcount}人（儿童${g.childrenCount ?? 0}人）` : ''}`;
   return (
     <>
       <Alert type="info" showIcon title="请核对是否为名单中的本人；如果是另一位同名宾客，请选择新建" style={{ marginBottom: 16 }} />
@@ -100,6 +120,9 @@ export function ReviewPage() {
     manualForm.setFieldsValue({ guestId: undefined, newGuest: undefined });
   }, [manualName, manualForm]);
 
+  useRsvpAttendance(form, confirming?.guestName ?? '', confirmCandidates, confirming != null);
+  useRsvpAttendance(manualForm, manualName, manualCandidates, manualOpen && !!manualName);
+
   const pending = useQuery({
     queryKey: ['checkins', 'pending'],
     queryFn: api.checkins.pending,
@@ -117,7 +140,7 @@ export function ReviewPage() {
 
   const confirm = useMutation({
     mutationFn: (v: CheckinFormValues) =>
-      api.checkins.confirm(confirming!.id, { ...guestChoice(v), amount: checkedAmount(v), method: v.method ?? 'wechat', note: v.note }),
+      api.checkins.confirm(confirming!.id, { ...attendanceValues(v), ...guestChoice(v), amount: checkedAmount(v), method: v.method ?? 'cash', note: v.note }),
     onSuccess: () => {
       message.success('已确认');
       setConfirming(null);
@@ -133,6 +156,7 @@ export function ReviewPage() {
   const manual = useMutation({
     mutationFn: (v: CheckinFormValues & { guestName: string }) =>
       api.checkins.createManual({
+        ...attendanceValues(v),
         guestName: v.guestName,
         submissionKey: manualSubmissionKey!,
         ...guestChoice(v),
@@ -190,7 +214,7 @@ export function ReviewPage() {
             renderItem={(item) => (
               <List.Item
                 actions={[
-                  <a key="ok" onClick={() => { form.resetFields(); setConfirming(item); form.setFieldsValue({ giftReceipt: 'received' }); }}>
+                  <a key="ok" onClick={() => { form.resetFields(); setConfirming(item); form.setFieldsValue({ giftReceipt: 'received', actualHeadcountInput: '1', actualChildrenInput: '0' }); }}>
                     确认签到
                   </a>,
                   <a key="no" onClick={() => setRecordAction({ entity: 'checkin', id: item.id, action: 'reject' })}>驳回</a>,
@@ -207,6 +231,8 @@ export function ReviewPage() {
       </Card>
 
       <Modal
+        style={{ top: 24 }}
+        styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' } }}
         title={`确认 · ${confirming?.guestName ?? ''}`}
         open={confirming != null}
         onCancel={() => setConfirming(null)}
@@ -217,6 +243,8 @@ export function ReviewPage() {
       >
         <Form form={form} layout="vertical" onFinish={(v) => confirm.mutate(v)}>
           {confirming && <>{confirming.guestArchived && <Alert type="warning" title="关联宾客已归档，请先联系管理员恢复宾客，或驳回此提交" />}<GuestSelection query={confirmCandidates} /></>}
+          <Typography.Paragraph type="secondary">有出席回执时自动带入预计人数；同名多人须先选择本人，可按现场实际修改。</Typography.Paragraph>
+          <AttendanceFields />
           <OptionalGiftFields />
           <Form.Item name="note" label="备注" rules={[{ max: MAX_TEXT_LENGTH, message: '备注最多500字' }]} >
             <Input maxLength={MAX_TEXT_LENGTH} />
@@ -225,6 +253,8 @@ export function ReviewPage() {
       </Modal>
 
       <Modal
+        style={{ top: 24 }}
+        styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' } }}
         title="手动补录签到"
         open={manualOpen}
         onCancel={() => setManualOpen(false)}
@@ -233,11 +263,13 @@ export function ReviewPage() {
         okButtonProps={{ disabled: !manualSubmissionKey || !!manualName && (manualCandidates.isFetching || manualCandidates.isError) }}
         destroyOnClose
       >
-        <Form form={manualForm} layout="vertical" onFinish={(v) => manual.mutate(v)} initialValues={{ giftReceipt: 'received' }}>
+        <Form form={manualForm} layout="vertical" onFinish={(v) => manual.mutate(v)} initialValues={{ giftReceipt: 'received', actualHeadcountInput: '1', actualChildrenInput: '0' }}>
           <Form.Item name="guestName" label="姓名" rules={[{ required: true, whitespace: true, max: 30, message: '请填写姓名（1–30字）' }]}>
             <Input maxLength={30} />
           </Form.Item>
           {manualName && <GuestSelection query={manualCandidates} />}
+          <Typography.Paragraph type="secondary">有出席回执时自动带入预计人数；同名多人须先选择本人，可按现场实际修改。</Typography.Paragraph>
+          <AttendanceFields />
           <OptionalGiftFields />
           <Form.Item name="note" label="备注" rules={[{ max: MAX_TEXT_LENGTH, message: '备注最多500字' }]} >
             <Input maxLength={MAX_TEXT_LENGTH} />

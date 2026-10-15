@@ -53,6 +53,8 @@ export function checkinToDTO(row: CheckinRow, gift?: GiftRow | null): CheckinDTO
     note: row.note,
     submittedAt: row.submittedAt,
     confirmedAt: row.confirmedAt,
+    actualHeadcount: row.actualHeadcount,
+    actualChildrenCount: row.actualChildrenCount,
     giftAmount: gift ? gift.amount : null,
     giftMethod: gift ? gift.method : null,
     giftVoided: gift?.voidedAt != null,

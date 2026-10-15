@@ -2,12 +2,12 @@ import { Hono } from 'hono';
 import { and, desc, eq, like } from 'drizzle-orm';
 import { db } from '../db/client';
 import { checkins, gifts, guests } from '../db/schema';
-import { requireAuth, type AppEnv } from '../auth/middleware';
+import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { checkinToDTO } from '../lib/dto';
 import { parsePage, str } from '../lib/util';
 import { findGuestCandidates, GuestMatchError } from '../lib/guest';
-import { enumQuery, inputErrorHandler } from '../lib/validation';
-import { CheckinError, confirmCheckin, confirmCheckinSchema, createManualCheckin, manualCheckinSchema } from '../services/checkins';
+import { enumQuery, inputErrorHandler, parseId } from '../lib/validation';
+import { attendanceCorrectionSchema, correctAttendance, CheckinError, confirmCheckin, confirmCheckinSchema, createManualCheckin, manualCheckinSchema } from '../services/checkins';
 
 export const checkinRoutes = new Hono<AppEnv>();
 checkinRoutes.use('*', requireAuth);
@@ -77,7 +77,7 @@ checkinRoutes.get('/pending', (c) => {
 /** 手动补录签到（可同时记礼金） */
 checkinRoutes.post('/', async (c) => {
   const parsed = manualCheckinSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对姓名、宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注；如页面已打开较久，请刷新后重试' } }, 400);
+  if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对实际总人数（1–20人）、儿童人数（0至总人数）、姓名、宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注；如页面已打开较久，请刷新后重试' } }, 400);
   const { checkin, gift, duplicate } = createManualCheckin(parsed.data);
   return c.json({ ok: true, data: { ...checkinToDTO(checkin, gift), duplicate } });
 });
@@ -87,9 +87,17 @@ checkinRoutes.patch('/:id/confirm', async (c) => {
   const id = Number(c.req.param('id'));
   if (!Number.isSafeInteger(id) || id <= 0) return c.json({ ok: false, error: { code: 'VALIDATION', message: '提交编号无效' } }, 400);
   const parsed = confirmCheckinSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注' } }, 400);
+  if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对实际总人数（1–20人）、儿童人数（0至总人数）、宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注' } }, 400);
   const { checkin, gift } = confirmCheckin(id, parsed.data);
   return c.json({ ok: true, data: checkinToDTO(checkin, gift) });
+});
+
+/** 管理员补记或更正实际人数，原值与原因一并留痕。 */
+checkinRoutes.patch('/:id/attendance', requireAdmin, async (c) => {
+  const id = parseId(c.req.param('id'));
+  const parsed = attendanceCorrectionSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请填写实际总人数（1–20人）、儿童人数（0至总人数）及更正原因，并刷新核对原人数' } }, 400);
+  return c.json({ ok: true, data: checkinToDTO(correctAttendance(id, parsed.data, c.get('user'))) });
 });
 
 /** 旧物理删除入口关闭，业务操作统一使用 lifecycle。 */

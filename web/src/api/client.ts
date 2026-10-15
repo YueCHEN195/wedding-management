@@ -137,10 +137,12 @@ export const api = {
       apiFetch<Paginated<CheckinDTO>>(`/api/checkins${qs(p)}`),
     pending: () => apiFetch<PendingCheckinDTO[]>('/api/checkins/pending'),
     candidates: (name: string) => apiFetch<GuestCandidate[]>(`/api/checkins/candidates${qs({ name })}`),
-    createManual: (data: { guestName: string; submissionKey: string; guestId?: number; newGuest?: NewCheckinGuest; amount?: number; method?: GiftMethod; note?: string }) =>
+    createManual: (data: { actualHeadcount: number; actualChildrenCount: number; guestName: string; submissionKey: string; guestId?: number; newGuest?: NewCheckinGuest; amount?: number; method?: GiftMethod; note?: string }) =>
       apiFetch<CheckinDTO & { duplicate: boolean }>('/api/checkins', { method: 'POST', body: JSON.stringify(data) }),
-    confirm: (id: number, data: { guestId?: number; newGuest?: NewCheckinGuest; amount: number; method: GiftMethod; note?: string }) =>
+    confirm: (id: number, data: { actualHeadcount: number; actualChildrenCount: number; guestId?: number; newGuest?: NewCheckinGuest; amount: number; method: GiftMethod; note?: string }) =>
       apiFetch<CheckinDTO>(`/api/checkins/${id}/confirm`, { method: 'PATCH', body: JSON.stringify(data) }),
+    correctAttendance: (id: number, data: { actualHeadcount: number; actualChildrenCount: number; expectedHeadcount: number | null; expectedChildrenCount: number | null; reason: string }) =>
+      apiFetch<CheckinDTO>(`/api/checkins/${id}/attendance`, { method: 'PATCH', body: JSON.stringify(data) }),
     qrUrl: () => '/api/checkin/qr',
   },
 

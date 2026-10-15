@@ -29,6 +29,13 @@
       "when": 1792050768915,
       "tag": "0003_safe_record_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792108800000,
+      "tag": "0004_actual_attendance",
+      "breakpoints": true
     }
   ]
 }

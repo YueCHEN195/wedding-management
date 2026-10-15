@@ -84,6 +84,10 @@ exportRoutes.get('/:type', async (c) => {
         name: '签到',
         columns: [
           { header: '姓名', key: 'guestName' },
+          { header: '签到编号', key: 'id' },
+          { header: '实际总人数（含儿童）', key: 'actualHeadcount' },
+          { header: '其中儿童', key: 'actualChildrenCount' },
+          { header: '当前计入到场人数', key: 'effectiveHeadcount' },
           { header: '来源', key: 'source' },
           { header: '状态', key: 'status' },
           { header: '提交时间', key: 'submittedAt', width: 22 },
@@ -92,6 +96,8 @@ exportRoutes.get('/:type', async (c) => {
         ],
         rows: rows.map((r) => ({
           guestName: r.guestName,
+          id: r.id, actualHeadcount: r.actualHeadcount ?? '待补记', actualChildrenCount: r.actualChildrenCount ?? '待补记',
+          effectiveHeadcount: r.status === 'confirmed' ? r.actualHeadcount ?? '待补记' : 0,
           source: r.source === 'self' ? '自助' : '补录',
           status: ({ pending: '待审核', confirmed: '已确认', rejected: '已驳回', cancelled: '已撤销' })[r.status],
           submittedAt: new Date(r.submittedAt).toLocaleString('zh-CN'),

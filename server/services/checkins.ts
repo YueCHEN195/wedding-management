@@ -2,12 +2,20 @@ import { createHash } from 'node:crypto';
 import { and, asc, eq, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, sqlite } from '../db/client';
-import { checkins, checkinSubmissions, gifts, guests, type CheckinRow } from '../db/schema';
+import { checkins, checkinSubmissions, gifts, guests, operationLogs, type CheckinRow } from '../db/schema';
 import { findGuestCandidates, matchOrCreateGuest } from '../lib/guest';
+import type { SessionPayload } from '../auth/jwt';
+import { MAX_HEADCOUNT } from '../../shared/constraints';
 import { generateToken, now } from '../lib/util';
 
 export const selfCheckinSchema = z.object({ name: z.string().trim().min(1).max(30), submissionKey: z.uuid() });
-export const confirmCheckinSchema = z.object({
+export const attendanceFields = {
+  actualHeadcount: z.number().int().min(1).max(MAX_HEADCOUNT),
+  actualChildrenCount: z.number().int().min(0).max(MAX_HEADCOUNT),
+};
+const validAttendance = (v: { actualHeadcount: number; actualChildrenCount: number }) => v.actualChildrenCount <= v.actualHeadcount;
+const checkinFields = z.object({
+  ...attendanceFields,
   guestId: z.number().int().positive().safe().optional(),
   newGuest: z.object({
     groupName: z.string().trim().min(1).max(50),
@@ -17,11 +25,12 @@ export const confirmCheckinSchema = z.object({
   method: z.enum(['cash', 'wechat', 'alipay']).default('cash'),
   note: z.string().trim().max(500).nullable().optional().transform((value) => value || null),
 });
-export const manualCheckinSchema = confirmCheckinSchema.extend({
+export const confirmCheckinSchema = checkinFields.refine(validAttendance, '儿童人数不能超过实际总人数');
+export const manualCheckinSchema = checkinFields.extend({
   guestName: z.string().trim().min(1).max(30),
-  amount: confirmCheckinSchema.shape.amount.default(0),
+  amount: checkinFields.shape.amount.default(0),
   submissionKey: z.uuid(),
-});
+}).refine(validAttendance, '儿童人数不能超过实际总人数');
 
 export class CheckinError extends Error {
   constructor(public code: string, message: string, public status: 400 | 404 | 409 = 409) { super(message); }
@@ -82,7 +91,7 @@ export function submitSelfCheckin(input: z.infer<typeof selfCheckinSchema>) {
 
 export function createManualCheckin(input: z.infer<typeof manualCheckinSchema>) {
   const payloadHash = digest(JSON.stringify({ action: 'manual', guestName: input.guestName, guestId: input.guestId ?? null,
-    amount: input.amount, method: input.method, note: input.note, ...(input.newGuest ? { newGuest: input.newGuest } : {}) }));
+    amount: input.amount, method: input.method, note: input.note, actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount, ...(input.newGuest ? { newGuest: input.newGuest } : {}) }));
   return sqlite.transaction(() => {
     const previous = replay(input.submissionKey, payloadHash);
     if (previous) return result(previous, true);
@@ -90,7 +99,7 @@ export function createManualCheckin(input: z.infer<typeof manualCheckinSchema>) 
     rejectExisting(currentCheckin(matched.id));
     const ts = now();
     const row = db.insert(checkins).values({ guestId: matched.id, guestName: matched.name, source: 'manual',
-      status: 'confirmed', note: input.note, submittedAt: ts, confirmedAt: ts }).returning().get();
+      status: 'confirmed', note: input.note, submittedAt: ts, confirmedAt: ts, actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount }).returning().get();
     if (input.amount > 0) db.insert(gifts).values({ guestId: matched.id, guestName: matched.name, amount: input.amount,
       method: input.method, note: input.note, checkinId: row.id, recordedAt: ts }).run();
     remember(input.submissionKey, payloadHash, row.id);
@@ -108,11 +117,37 @@ export function confirmCheckin(id: number, input: z.infer<typeof confirmCheckinS
     }
     const matched = resolveGuest(existing.guestName, input);
     rejectExisting(currentCheckin(matched.id, id));
-    const row = db.update(checkins).set({ status: 'confirmed', confirmedAt: now(), guestId: matched.id, guestName: matched.name, note: input.note })
+    const row = db.update(checkins).set({ status: 'confirmed', confirmedAt: now(), guestId: matched.id, guestName: matched.name, note: input.note, actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount })
       .where(and(eq(checkins.id, id), eq(checkins.status, 'pending'))).returning().get();
     if (!row) throw new CheckinError('CONFLICT', '该提交已被处理，请刷新后查看');
     if (input.amount > 0) db.insert(gifts).values({ guestId: matched.id, guestName: matched.name, amount: input.amount,
       method: input.method, note: input.note, checkinId: id, recordedAt: now() }).run();
     return result(row);
+  }).immediate();
+}
+
+
+export const attendanceCorrectionSchema = z.object({
+  ...attendanceFields,
+  expectedHeadcount: attendanceFields.actualHeadcount.nullable(),
+  expectedChildrenCount: attendanceFields.actualChildrenCount.nullable(),
+  reason: z.string().trim().min(1).max(200),
+}).strict().refine(validAttendance, '儿童人数不能超过实际总人数');
+
+export function correctAttendance(id: number, input: z.infer<typeof attendanceCorrectionSchema>, actor: SessionPayload) {
+  return sqlite.transaction(() => {
+    const current = db.select().from(checkins).where(eq(checkins.id, id)).get();
+    if (!current || current.status !== 'confirmed') throw new CheckinError('CONFLICT', '仅可补记或更正已确认签到的人数，请刷新后核对');
+    if (current.actualHeadcount !== input.expectedHeadcount || current.actualChildrenCount !== input.expectedChildrenCount) {
+      throw new CheckinError('CONFLICT', '人数已被其他操作更新，请刷新后重新核对');
+    }
+    if (current.actualHeadcount === input.actualHeadcount && current.actualChildrenCount === input.actualChildrenCount) {
+      throw new CheckinError('CONFLICT', '人数未变化，无需重复保存');
+    }
+    const row = db.update(checkins).set({ actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount })
+      .where(eq(checkins.id, id)).returning().get();
+    db.insert(operationLogs).values({ entity: 'checkin', entityId: id, action: 'attendance', reason: input.reason,
+      actorId: actor.id, actorName: actor.username, actorRole: actor.role, before: JSON.stringify(current), after: JSON.stringify(row), createdAt: now() }).run();
+    return row;
   }).immediate();
 }
