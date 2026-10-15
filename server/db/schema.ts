@@ -63,6 +63,14 @@ export const checkins = sqliteTable('checkins', {
   confirmedAt: integer('confirmed_at'),
 });
 
+/** 同一次登记的重试结果；多个设备的提交可指向同一签到记录。 */
+export const checkinSubmissions = sqliteTable('checkin_submissions', {
+  keyHash: text('key_hash').primaryKey().notNull(),
+  payloadHash: text('payload_hash').notNull(),
+  checkinId: integer('checkin_id').notNull().references(() => checkins.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at').notNull(),
+});
+
 /** 礼金 */
 export const gifts = sqliteTable('gifts', {
   id: integer('id').primaryKey({ autoIncrement: true }),

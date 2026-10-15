@@ -8,6 +8,16 @@ export type Attending = 'yes' | 'no' | 'maybe';
 export type RsvpSource = 'link' | 'universal';
 export type CheckinSource = 'self' | 'manual';
 export type CheckinStatus = 'pending' | 'confirmed';
+/** 现场核对后明确新建的另一位宾客，分组用于同名辨识。 */
+export interface NewCheckinGuest {
+  groupName: string;
+  side?: Side;
+}
+export interface PublicCheckinResult {
+  id: number;
+  duplicate: boolean;
+  status: CheckinStatus;
+}
 export type GiftMethod = 'wechat' | 'alipay' | 'cash';
 
 export interface SessionUser {

@@ -4,14 +4,15 @@ import { db } from '../db/client';
 import { checkins, gifts } from '../db/schema';
 import { requireAuth, type AppEnv } from '../auth/middleware';
 import { checkinToDTO } from '../lib/dto';
-import { now, optionalStr, parsePage, str } from '../lib/util';
-import { findGuestCandidates, GuestMatchError, matchOrCreateGuest } from '../lib/guest';
-import type { CheckinStatus, GiftMethod } from '../../shared/types';
+import { parsePage, str } from '../lib/util';
+import { findGuestCandidates, GuestMatchError } from '../lib/guest';
+import type { CheckinStatus } from '../../shared/types';
+import { CheckinError, confirmCheckin, confirmCheckinSchema, createManualCheckin, manualCheckinSchema } from '../services/checkins';
 
 export const checkinRoutes = new Hono<AppEnv>();
 checkinRoutes.use('*', requireAuth);
 checkinRoutes.onError((err, c) => {
-  if (err instanceof GuestMatchError) {
+  if (err instanceof GuestMatchError || err instanceof CheckinError) {
     return c.json({ ok: false, error: { code: err.code, message: err.message } }, err.status);
   }
   throw err;
@@ -75,67 +76,20 @@ checkinRoutes.get('/pending', (c) => {
 
 /** 手动补录签到（可同时记礼金） */
 checkinRoutes.post('/', async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const name = str(body.guestName);
-  if (!name) return c.json({ ok: false, error: { code: 'VALIDATION', message: '姓名必填' } }, 400);
-  const amount = Number(body.amount ?? 0); // 分
-  const method = (optionalStr(body.method) as GiftMethod | null) ?? 'cash';
-  const note = optionalStr(body.note);
-  const matched = matchOrCreateGuest(name, body.guestId);
-  const ts = now();
-  const checkin = db
-    .insert(checkins)
-    .values({
-      guestId: matched.id,
-      guestName: matched.name,
-      source: 'manual',
-      status: 'confirmed',
-      note,
-      submittedAt: ts,
-      confirmedAt: ts,
-    })
-    .returning()
-    .get();
-  if (Number.isFinite(amount) && amount > 0) {
-    db.insert(gifts)
-      .values({ guestId: matched.id, guestName: matched.name, amount, method, note, checkinId: checkin.id, recordedAt: ts })
-      .run();
-  }
-  return c.json({ ok: true, data: checkinToDTO(checkin) });
+  const parsed = manualCheckinSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对姓名、宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注；如页面已打开较久，请刷新后重试' } }, 400);
+  const { checkin, gift, duplicate } = createManualCheckin(parsed.data);
+  return c.json({ ok: true, data: { ...checkinToDTO(checkin, gift), duplicate } });
 });
 
 /** 审核确认：写入签到状态并（金额 > 0 时）生成礼金 */
 checkinRoutes.patch('/:id/confirm', async (c) => {
   const id = Number(c.req.param('id'));
-  const existing = db.select().from(checkins).where(eq(checkins.id, id)).get();
-  if (!existing) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '提交不存在' } }, 404);
-  if (existing.status === 'confirmed') {
-    return c.json({ ok: false, error: { code: 'CONFLICT', message: '该提交已被确认' } }, 409);
-  }
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const amount = Number(body.amount); // 分，必填，可为 0
-  if (!Number.isFinite(amount) || amount < 0) {
-    return c.json({ ok: false, error: { code: 'VALIDATION', message: '请填写礼金金额（可为 0）' } }, 400);
-  }
-  const method = (optionalStr(body.method) as GiftMethod | null) ?? 'cash';
-  const note = optionalStr(body.note);
-
-  // 重新核对当前候选；旧版本已误绑的待审记录也不能直接沿用 guestId。
-  const matched = matchOrCreateGuest(existing.guestName, body.guestId);
-  const ts = now();
-
-  db.update(checkins)
-    .set({ status: 'confirmed', confirmedAt: ts, guestId: matched.id, guestName: matched.name })
-    .where(eq(checkins.id, id))
-    .run();
-  if (amount > 0) {
-    db.insert(gifts)
-      .values({ guestId: matched.id, guestName: matched.name, amount, method, note, checkinId: id, recordedAt: ts })
-      .run();
-  }
-  const row = db.select().from(checkins).where(eq(checkins.id, id)).get()!;
-  const gift = db.select().from(gifts).where(eq(gifts.checkinId, id)).get();
-  return c.json({ ok: true, data: checkinToDTO(row, gift ?? null) });
+  if (!Number.isSafeInteger(id) || id <= 0) return c.json({ ok: false, error: { code: 'VALIDATION', message: '提交编号无效' } }, 400);
+  const parsed = confirmCheckinSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请核对宾客选择、新宾客辨识分组（1–50字）、金额（0–100000元，最多两位小数）、方式和备注' } }, 400);
+  const { checkin, gift } = confirmCheckin(id, parsed.data);
+  return c.json({ ok: true, data: checkinToDTO(checkin, gift) });
 });
 
 /** 驳回（= 直接删除，含关联礼金） */

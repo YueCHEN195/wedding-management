@@ -1,7 +1,9 @@
 import type {
   CheckinDTO,
+  NewCheckinGuest,
   GuestCandidate,
   PendingCheckinDTO,
+  PublicCheckinResult,
   GiftDTO,
   GiftListDTO,
   GuestDTO,
@@ -124,9 +126,9 @@ export const api = {
       apiFetch<Paginated<CheckinDTO>>(`/api/checkins${qs(p)}`),
     pending: () => apiFetch<PendingCheckinDTO[]>('/api/checkins/pending'),
     candidates: (name: string) => apiFetch<GuestCandidate[]>(`/api/checkins/candidates${qs({ name })}`),
-    createManual: (data: { guestName: string; guestId?: number; amount?: number; method?: GiftMethod; note?: string }) =>
-      apiFetch<CheckinDTO>('/api/checkins', { method: 'POST', body: JSON.stringify(data) }),
-    confirm: (id: number, data: { guestId?: number; amount: number; method: GiftMethod; note?: string }) =>
+    createManual: (data: { guestName: string; submissionKey: string; guestId?: number; newGuest?: NewCheckinGuest; amount?: number; method?: GiftMethod; note?: string }) =>
+      apiFetch<CheckinDTO & { duplicate: boolean }>('/api/checkins', { method: 'POST', body: JSON.stringify(data) }),
+    confirm: (id: number, data: { guestId?: number; newGuest?: NewCheckinGuest; amount: number; method: GiftMethod; note?: string }) =>
       apiFetch<CheckinDTO>(`/api/checkins/${id}/confirm`, { method: 'PATCH', body: JSON.stringify(data) }),
     remove: (id: number) => apiFetch<boolean>(`/api/checkins/${id}`, { method: 'DELETE' }),
     qrUrl: () => '/api/checkin/qr',
@@ -159,10 +161,10 @@ export const api = {
   },
 
   publicCheckin: {
-    self: (name: string) =>
-      apiFetch<{ id: number; duplicate: boolean }>('/api/checkin/self', {
+    self: (name: string, submissionKey: string) =>
+      apiFetch<PublicCheckinResult>('/api/checkin/self', {
         method: 'POST',
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, submissionKey }),
       }),
   },
 };

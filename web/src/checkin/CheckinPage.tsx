@@ -1,29 +1,54 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { wedding } from '@shared/wedding';
 import { api, ApiError } from '@/api/client';
 
 const RED = '#8c1c1c';
 const GOLD = '#c8a45c';
+const ATTEMPT_KEY = 'wedding.checkin.attempt';
+interface CheckinAttempt { name: string; submissionKey: string }
+function readAttempt(): CheckinAttempt | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ATTEMPT_KEY) ?? 'null');
+    if (saved && typeof saved.name === 'string' && saved.name.length <= 30 && typeof saved.submissionKey === 'string'
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved.submissionKey)) return saved;
+  } catch { /* 浏览器禁用存储时，仍可在当前页面重试。 */ }
+  return null;
+}
+function storeAttempt(value: CheckinAttempt | null) {
+  try {
+    if (value) localStorage.setItem(ATTEMPT_KEY, JSON.stringify(value));
+    else localStorage.removeItem(ATTEMPT_KEY);
+  } catch { /* 使用当前页面的内存状态。 */ }
+}
 
 export function CheckinPage() {
-  const [name, setName] = useState('');
-  const [state, setState] = useState<'idle' | 'saving' | 'done' | 'dup'>('idle');
+  const [attempt, setAttempt] = useState<CheckinAttempt | null>(readAttempt);
+  const [name, setName] = useState(attempt?.name ?? '');
+  const [state, setState] = useState<'idle' | 'saving' | 'done' | 'dup' | 'confirmed'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const saving = useRef(false);
 
   async function submit() {
+    if (saving.current) return;
     const n = name.trim();
     if (!n) {
       setError('请输入姓名');
       return;
     }
     setError(null);
+    const current = attempt?.name === n ? attempt : { name: n, submissionKey: crypto.randomUUID() };
+    setAttempt(current);
+    storeAttempt(current);
+    saving.current = true;
     setState('saving');
     try {
-      const r = await api.publicCheckin.self(n);
-      setState(r.duplicate ? 'dup' : 'done');
+      const r = await api.publicCheckin.self(n, current.submissionKey);
+      setState(r.status === 'confirmed' ? 'confirmed' : r.duplicate ? 'dup' : 'done');
     } catch (e) {
       setState('idle');
       setError(e instanceof ApiError ? e.message : '提交失败，请重试');
+    } finally {
+      saving.current = false;
     }
   }
 
@@ -47,7 +72,7 @@ export function CheckinPage() {
       </h1>
       <p style={{ color: GOLD, marginBottom: 32 }}>现场签到</p>
 
-      {state === 'done' || state === 'dup' ? (
+      {state === 'done' || state === 'dup' || state === 'confirmed' ? (
         <div
           style={{
             background: '#f7f3ea',
@@ -59,16 +84,21 @@ export function CheckinPage() {
           }}
         >
           <div style={{ fontSize: 48, color: '#2e7d32' }}>{state === 'done' ? '✓' : '☑'}</div>
-          <h2 style={{ margin: '12px 0' }}>{state === 'dup' ? '您已提交过' : '已提交'}</h2>
-          <p style={{ color: '#666', margin: 0 }}>请等待工作人员确认，感谢您的到来！</p>
+          <p style={{ margin: '12px 0 0' }}>{attempt?.name}</p>
+          <h2 style={{ margin: '12px 0' }}>{state === 'confirmed' ? '已完成签到' : state === 'dup' ? '您已提交过' : '已提交'}</h2>
+          <p style={{ color: '#666', margin: 0 }}>
+            {state === 'confirmed' ? '工作人员已确认您的签到，无需再次提交。感谢您的到来！' : '请等待工作人员确认，感谢您的到来！'}
+          </p>
           <button
             onClick={() => {
               setName('');
               setState('idle');
+              setAttempt(null);
+              storeAttempt(null);
             }}
             style={{ marginTop: 20, background: RED, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 8, fontSize: 15, cursor: 'pointer' }}
           >
-            再签一位
+            为另一位宾客登记
           </button>
         </div>
       ) : (
@@ -84,6 +114,9 @@ export function CheckinPage() {
         >
           <p style={{ marginTop: 0, color: '#666' }}>请输入您的姓名</p>
           <input
+            aria-label="姓名"
+            disabled={state === 'saving'}
+            maxLength={30}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}

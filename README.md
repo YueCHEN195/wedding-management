@@ -6,7 +6,7 @@
 - **请柬页**（手机）：`/invite/:token` —— 宾客查看请柬、填写回执
 - **自助签到页**（手机）：`/checkin` —— 现场扫码自助签到
 
-> 需求与技术方案见 `docs/` 目录。
+> 需求、技术方案、审查与逐项验收见 [文档索引](docs/README.md)。
 
 ## 技术栈
 
@@ -76,7 +76,7 @@ web/       React 前端（admin / invite / checkin）
 shared/    前后端共享类型与婚礼配置
 public/    静态资源（海报底图、图片，demo 占位）
 data/      SQLite 数据文件（git 忽略）
-docs/      需求文档 / 技术设计
+docs/      产品 / 技术 / 评审 / 问题整改（含验收截图）
 ```
 
 ## 部署（腾讯云 · 中国香港）
@@ -88,7 +88,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Caddy 会自动签发 HTTPS 证书。详见 `docs/技术设计.md` 第 8.5 节。
+Caddy 会自动签发 HTTPS 证书。详见 [技术设计](docs/技术/技术设计.md) 第 8.5 节。
 
 ## 说明
 

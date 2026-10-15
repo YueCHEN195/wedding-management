@@ -3,22 +3,45 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tan
 import { Alert, Button, Card, Empty, Form, Image, Input, InputNumber, List, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { api, ApiError } from '@/api/client';
-import type { CheckinDTO, GiftMethod, GuestCandidate } from '@shared/types';
+import type { CheckinDTO, GiftMethod, GuestCandidate, NewCheckinGuest } from '@shared/types';
 import { ATTENDING_LABEL, METHOD_LABEL, SIDE_LABEL, formatDateTime } from '@/lib/format';
 
+interface CheckinFormValues {
+  guestId?: number | 'new';
+  newGuest?: NewCheckinGuest;
+  amountYuan?: number;
+  method?: GiftMethod;
+  note?: string;
+}
+function guestChoice(v: CheckinFormValues) {
+  return v.guestId === 'new' ? { newGuest: v.newGuest } : { guestId: v.guestId };
+}
 function GuestSelection({ query }: { query: UseQueryResult<GuestCandidate[], Error> }) {
+  const form = Form.useFormInstance();
+  const selection = Form.useWatch('guestId', form);
   if (query.isPending) return <Typography.Paragraph>正在核对宾客名单…</Typography.Paragraph>;
   if (query.isError) return <Alert type="error" showIcon title="宾客名单加载失败，请重试后再确认" action={<Button onClick={() => query.refetch()}>重试</Button>} />;
   const candidates = query.data;
   if (candidates.length === 0) return <Alert type="info" title="未找到同名宾客，确认后将自动建立新档案" style={{ marginBottom: 16 }} />;
   const label = (g: GuestCandidate) => `#${g.id} · ${g.name} · ${g.checkedIn ? '已签到' : '未签到'} · ${g.side ? SIDE_LABEL[g.side] : '归属未填'} · ${g.groupName || '未分组'} · ${g.attending ? ATTENDING_LABEL[g.attending] : '未回执'}${g.attending === 'yes' ? ` ${g.headcount}人` : ''}`;
-  if (candidates.length === 1) return <Typography.Paragraph type="secondary">对应宾客：{label(candidates[0])}</Typography.Paragraph>;
   return (
     <>
-      <Alert type="warning" showIcon title={`有 ${candidates.length} 位同名宾客，请先核对再选择`} style={{ marginBottom: 16 }} />
-      <Form.Item name="guestId" label="对应宾客" rules={[{ required: true, message: '请选择对应宾客，不能自动关联同名记录' }]}>
-        <Select placeholder="请核对分组、归属方和回执人数" options={candidates.map((g) => ({ value: g.id, label: label(g) }))} optionRender={(option) => <span style={{ whiteSpace: 'normal' }}>{option.label}</span>} />
+      <Alert type="info" showIcon title="请核对是否为名单中的本人；如果是另一位同名宾客，请选择新建" style={{ marginBottom: 16 }} />
+      <Form.Item name="guestId" label="对应宾客" rules={[{ required: true, message: '请选择对应宾客，或新增另一位同名宾客' }]}>
+        <Select placeholder="核对已有宾客，或新增另一位同名宾客" options={[
+          ...candidates.map((g) => ({ value: g.id as number | 'new', label: label(g), disabled: g.checkedIn })),
+          { value: 'new' as const, label: '都不是，新增另一位同名宾客' },
+        ]} optionRender={(option) => <span style={{ whiteSpace: 'normal' }}>{option.label}</span>} />
       </Form.Item>
+      {selection === 'new' && <>
+        <Typography.Paragraph type="secondary">确认是另一位本人后再新建；同一人追加礼金请到礼金管理登记。</Typography.Paragraph>
+        <Form.Item name={['newGuest', 'groupName']} label="辨识分组" preserve={false} rules={[{ required: true, whitespace: true, max: 50, message: '请填写辨识分组（最多50字）' }]}>
+          <Input placeholder="例如：新郎同事带来的朋友" maxLength={50} />
+        </Form.Item>
+        <Form.Item name={['newGuest', 'side']} label="归属方（可选）" preserve={false}>
+          <Select allowClear placeholder="请选择" options={Object.entries(SIDE_LABEL).map(([value, label]) => ({ value, label }))} />
+        </Form.Item>
+      </>}
     </>
   );
 }
@@ -27,6 +50,7 @@ export function ReviewPage() {
   const qc = useQueryClient();
   const [confirming, setConfirming] = useState<CheckinDTO | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  const [manualSubmissionKey, setManualSubmissionKey] = useState<string | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [form] = Form.useForm();
   const [manualForm] = Form.useForm();
@@ -44,7 +68,7 @@ export function ReviewPage() {
     staleTime: 0,
   });
   useEffect(() => {
-    manualForm.setFieldValue('guestId', undefined);
+    manualForm.setFieldsValue({ guestId: undefined, newGuest: undefined });
   }, [manualName, manualForm]);
 
   const pending = useQuery({
@@ -57,11 +81,14 @@ export function ReviewPage() {
     qc.invalidateQueries({ queryKey: ['checkins'] });
     qc.invalidateQueries({ queryKey: ['checkin-candidates'] });
     qc.invalidateQueries({ queryKey: ['stats'] });
+    qc.invalidateQueries({ queryKey: ['gifts'] });
+    qc.invalidateQueries({ queryKey: ['guests'] });
+    qc.invalidateQueries({ queryKey: ['guest-detail'] });
   };
 
   const confirm = useMutation({
-    mutationFn: (v: { guestId?: number; amountYuan: number; method: GiftMethod; note?: string }) =>
-      api.checkins.confirm(confirming!.id, { guestId: v.guestId, amount: Math.round(v.amountYuan * 100), method: v.method, note: v.note }),
+    mutationFn: (v: CheckinFormValues) =>
+      api.checkins.confirm(confirming!.id, { ...guestChoice(v), amount: Math.round((v.amountYuan ?? 0) * 100), method: v.method ?? 'wechat', note: v.note }),
     onSuccess: () => {
       message.success('已确认');
       setConfirming(null);
@@ -83,16 +110,17 @@ export function ReviewPage() {
   });
 
   const manual = useMutation({
-    mutationFn: (v: { guestName: string; guestId?: number; amountYuan?: number; method?: GiftMethod; note?: string }) =>
+    mutationFn: (v: CheckinFormValues & { guestName: string }) =>
       api.checkins.createManual({
         guestName: v.guestName,
-        guestId: v.guestId,
+        submissionKey: manualSubmissionKey!,
+        ...guestChoice(v),
         amount: v.amountYuan ? Math.round(v.amountYuan * 100) : 0,
         method: v.method ?? 'cash',
         note: v.note,
       }),
-    onSuccess: () => {
-      message.success('已补录');
+    onSuccess: (data) => {
+      message.success(data.duplicate ? '本次补录已保存，未重复登记' : '已补录');
       setManualOpen(false);
       manualForm.resetFields();
       invalidate();
@@ -119,6 +147,7 @@ export function ReviewPage() {
           icon={<PlusOutlined />}
           onClick={() => {
             manualForm.resetFields();
+            setManualSubmissionKey(crypto.randomUUID());
             setManualOpen(true);
           }}
         >
@@ -169,7 +198,7 @@ export function ReviewPage() {
         <Form form={form} layout="vertical" onFinish={(v) => confirm.mutate(v)}>
           {confirming && <GuestSelection query={confirmCandidates} />}
           <Form.Item name="amountYuan" label="礼金金额（元，没有礼金填 0）" rules={[{ required: true, message: '请填写金额' }]}>
-            <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
+            <InputNumber min={0} max={100000} precision={2} style={{ width: '100%' }} placeholder="0" />
           </Form.Item>
           <Form.Item name="method" label="方式" rules={[{ required: true }]}>
             <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />
@@ -186,7 +215,7 @@ export function ReviewPage() {
         onCancel={() => setManualOpen(false)}
         onOk={() => manualForm.submit()}
         confirmLoading={manual.isPending}
-        okButtonProps={{ disabled: !!manualName && (manualCandidates.isFetching || manualCandidates.isError) }}
+        okButtonProps={{ disabled: !manualSubmissionKey || !!manualName && (manualCandidates.isFetching || manualCandidates.isError) }}
         destroyOnClose
       >
         <Form form={manualForm} layout="vertical" onFinish={(v) => manual.mutate(v)} initialValues={{ method: 'cash' }}>
@@ -195,7 +224,7 @@ export function ReviewPage() {
           </Form.Item>
           {manualName && <GuestSelection query={manualCandidates} />}
           <Form.Item name="amountYuan" label="礼金金额（元，可填 0）">
-            <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
+            <InputNumber min={0} max={100000} precision={2} style={{ width: '100%' }} placeholder="0" />
           </Form.Item>
           <Form.Item name="method" label="方式">
             <Select options={Object.entries(METHOD_LABEL).map(([value, label]) => ({ value, label }))} />

@@ -3,6 +3,7 @@ import { after, beforeEach, test } from 'node:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 
 // 必须在加载数据库模块前指定临时文件，测试绝不读取本地业务数据库。
@@ -36,7 +37,7 @@ function addGuest(name = '同名测试', group = '朋友') {
 }
 
 async function selfCheckin(name = '同名测试') {
-  return request('/api/checkin/self', 'POST', { name }, false);
+  return request('/api/checkin/self', 'POST', { name, submissionKey: randomUUID() }, false);
 }
 
 beforeEach(() => {
@@ -124,10 +125,10 @@ test('明确选择第二位同名宾客后，签到和礼金均关联第二位',
 
 test('手动补录同名时也必须选择宾客', async () => {
   addGuest(); const second = addGuest();
-  const failed = await request('/api/checkins', 'POST', { guestName: '同名测试', amount: 0 });
+  const failed = await request('/api/checkins', 'POST', { guestName: '同名测试', amount: 0, submissionKey: randomUUID() });
   assert.equal(failed.status, 409);
   assert.equal((sqlite.prepare('SELECT count(*) AS n FROM checkins').get() as any).n, 0);
-  const saved = await request('/api/checkins', 'POST', { guestName: '同名测试', guestId: second, amount: 0 });
+  const saved = await request('/api/checkins', 'POST', { guestName: '同名测试', guestId: second, amount: 0, submissionKey: randomUUID() });
   assert.equal(saved.status, 200);
   assert.equal(saved.body.data.guestId, second);
 });
