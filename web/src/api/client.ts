@@ -1,5 +1,7 @@
 import type {
   CheckinDTO,
+  GuestCandidate,
+  PendingCheckinDTO,
   GiftDTO,
   GiftListDTO,
   GuestDTO,
@@ -120,10 +122,11 @@ export const api = {
   checkins: {
     list: (p: { status?: CheckinStatus; keyword?: string; page?: number; pageSize?: number }) =>
       apiFetch<Paginated<CheckinDTO>>(`/api/checkins${qs(p)}`),
-    pending: () => apiFetch<CheckinDTO[]>('/api/checkins/pending'),
+    pending: () => apiFetch<PendingCheckinDTO[]>('/api/checkins/pending'),
+    candidates: (name: string) => apiFetch<GuestCandidate[]>(`/api/checkins/candidates${qs({ name })}`),
     createManual: (data: { guestName: string; guestId?: number; amount?: number; method?: GiftMethod; note?: string }) =>
       apiFetch<CheckinDTO>('/api/checkins', { method: 'POST', body: JSON.stringify(data) }),
-    confirm: (id: number, data: { amount: number; method: GiftMethod; note?: string }) =>
+    confirm: (id: number, data: { guestId?: number; amount: number; method: GiftMethod; note?: string }) =>
       apiFetch<CheckinDTO>(`/api/checkins/${id}/confirm`, { method: 'PATCH', body: JSON.stringify(data) }),
     remove: (id: number) => apiFetch<boolean>(`/api/checkins/${id}`, { method: 'DELETE' }),
     qrUrl: () => '/api/checkin/qr',
@@ -147,6 +150,7 @@ export const api = {
   exportUrl: (type: 'guests' | 'rsvps' | 'checkins' | 'gifts') => `/api/export/${type}`,
 
   invite: {
+    getUniversalRsvp: () => apiFetch<RsvpDTO | null>('/api/invite/rsvp'),
     get: (token: string) => apiFetch<InviteData>(`/api/invite/${token}`),
     rsvp: (token: string, data: Record<string, unknown>) =>
       apiFetch<RsvpDTO>(`/api/invite/${token}/rsvp`, { method: 'POST', body: JSON.stringify(data) }),

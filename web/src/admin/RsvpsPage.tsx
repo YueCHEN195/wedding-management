@@ -38,7 +38,7 @@ export function RsvpsPage() {
     },
     { title: '出席人数', dataIndex: 'headcount', width: 90 },
     { title: '随行儿童', dataIndex: 'childrenCount', width: 90 },
-    { title: '来源', dataIndex: 'source', width: 90, render: (v) => (v === 'link' ? '专属' : '通用') },
+    { title: '来源', dataIndex: 'source', width: 150, render: (v, r) => <>{v === 'link' ? '专属' : '通用'}{r.guestId == null && <Tag style={{ marginLeft: 6 }}>待关联宾客</Tag>}</> },
     { title: '留言', dataIndex: 'message', ellipsis: true, render: (v) => v ?? '-' },
     { title: '提交时间', dataIndex: 'submittedAt', width: 160, render: formatDateTime },
     {

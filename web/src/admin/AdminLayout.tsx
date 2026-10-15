@@ -2,6 +2,7 @@ import { Layout, Menu, Tag, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
+import { replaceSession } from '@/api/session';
 
 const MENU = [
   { key: '/admin', label: '仪表盘' },
@@ -63,7 +64,7 @@ export function AdminLayout() {
             <a
               onClick={async () => {
                 await api.logout();
-                await queryClient.invalidateQueries();
+                await replaceSession(queryClient, null);
                 navigate('/login', { replace: true });
               }}
             >

@@ -48,7 +48,9 @@ export function InvitePage() {
   const universal = !token;
 
   const [opened, setOpened] = useState(false);
-  const [loading, setLoading] = useState(!!token);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [invalid, setInvalid] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [salutation, setSalutation] = useState<string | null>(null);
@@ -64,15 +66,28 @@ export function InvitePage() {
   const cd = useCountdown(wedding.date);
 
   useEffect(() => {
-    if (!token) return;
     let alive = true;
-    api.invite
-      .get(token)
+    setLoading(true);
+    setLoadError(null);
+    setInvalid(false);
+    setGuestName(null);
+    setSalutation(null);
+    setNameInput('');
+    setAttending('yes');
+    setHeadcount(1);
+    setChildren(0);
+    setMessage('');
+    setSubmitted(false);
+    const invitation = token
+      ? api.invite.get(token)
+      : api.invite.getUniversalRsvp().then((rsvp) => ({ guestName: null, salutation: null, rsvp }));
+    invitation
       .then((d) => {
         if (!alive) return;
         setGuestName(d.guestName);
         setSalutation(d.salutation);
         if (d.rsvp) {
+          if (!token) setNameInput(d.rsvp.guestName);
           setAttending(d.rsvp.attending);
           setHeadcount(d.rsvp.headcount || 1);
           setChildren(d.rsvp.childrenCount || 0);
@@ -81,17 +96,20 @@ export function InvitePage() {
         }
       })
       .catch((e) => {
-        if (e instanceof ApiError && e.status === 404) setInvalid(true);
+        if (!alive) return;
+        if (token && e instanceof ApiError && e.status === 404) setInvalid(true);
+        else setLoadError(e instanceof ApiError ? e.message : '请柬加载失败，请稍后重试');
       })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [token]);
+  }, [token, loadAttempt]);
 
   const greeting = salutation ?? guestName ?? null;
 
   async function submit() {
+    if (saving || loading || loadError) return;
     if (universal && !nameInput.trim()) {
       alert('请填写您的姓名');
       return;
@@ -162,6 +180,18 @@ export function InvitePage() {
           <div style={{ fontSize: 48 }}>囍</div>
           <h2>请柬链接有误</h2>
           <p style={{ opacity: 0.8 }}>请联系新人获取正确的邀请链接</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: RED_DARK, color: PAPER, textAlign: 'center', padding: 24 }}>
+        <div>
+          <h2>暂时无法加载请柬</h2>
+          <p role="alert">{loadError}</p>
+          <button onClick={() => setLoadAttempt((n) => n + 1)} style={{ ...stepBtn, width: 'auto', height: 'auto', padding: '12px 24px' }}>重新加载</button>
         </div>
       </div>
     );
@@ -308,13 +338,16 @@ export function InvitePage() {
             <div style={cardStyle}>
               {universal && !guestName && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 6 }}>您的姓名</label>
+                  <label htmlFor="rsvp-name" style={{ display: 'block', marginBottom: 6 }}>您的姓名</label>
                   <input
+                    id="rsvp-name"
+                    maxLength={50}
                     value={nameInput}
                     onChange={(e) => setNameInput(e.target.value)}
                     placeholder="请输入姓名"
                     style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ddd', fontSize: 16 }}
                   />
+                  <p style={{ marginBottom: 0, color: '#666', fontSize: 14 }}>本浏览器会记住您的回执，方便下次修改；换设备请联系新人协助。</p>
                 </div>
               )}
 
@@ -348,17 +381,17 @@ export function InvitePage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <span>出席人数（含本人）</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <button onClick={() => setHeadcount((n) => Math.max(1, n - 1))} style={stepBtn}>-</button>
+                      <button onClick={() => { setHeadcount((n) => Math.max(1, n - 1)); setChildren((n) => Math.min(n, Math.max(1, headcount - 1))); }} style={stepBtn} aria-label="减少出席人数">-</button>
                       <span style={{ minWidth: 24, textAlign: 'center', fontSize: 18 }}>{headcount}</span>
-                      <button onClick={() => setHeadcount((n) => n + 1)} style={stepBtn}>+</button>
+                      <button onClick={() => setHeadcount((n) => Math.min(20, n + 1))} style={stepBtn} aria-label="增加出席人数">+</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <span>随行儿童</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <button onClick={() => setChildren((n) => Math.max(0, n - 1))} style={stepBtn}>-</button>
+                      <button onClick={() => setChildren((n) => Math.max(0, n - 1))} style={stepBtn} aria-label="减少儿童人数">-</button>
                       <span style={{ minWidth: 24, textAlign: 'center', fontSize: 18 }}>{children}</span>
-                      <button onClick={() => setChildren((n) => n + 1)} style={stepBtn}>+</button>
+                      <button onClick={() => setChildren((n) => Math.min(headcount, n + 1))} style={stepBtn} aria-label="增加儿童人数">+</button>
                     </div>
                   </div>
                 </>
@@ -369,6 +402,7 @@ export function InvitePage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}
+                maxLength={500}
                 placeholder="写下您的祝福…"
                 style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ddd', fontSize: 15, resize: 'vertical' }}
               />

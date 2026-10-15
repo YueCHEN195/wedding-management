@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Form, Input, Typography, message } from 'antd';
 import { api, ApiError } from '@/api/client';
+import { replaceSession } from '@/api/session';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -15,8 +16,8 @@ export function LoginPage() {
   const login = useMutation({
     mutationFn: ({ username, password }: { username: string; password: string }) =>
       api.login(username, password),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['me'] });
+    onSuccess: async (user) => {
+      await replaceSession(queryClient, user);
       navigate(from, { replace: true });
     },
     onError: (err) => {

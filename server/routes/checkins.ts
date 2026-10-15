@@ -5,11 +5,26 @@ import { checkins, gifts } from '../db/schema';
 import { requireAuth, type AppEnv } from '../auth/middleware';
 import { checkinToDTO } from '../lib/dto';
 import { now, optionalStr, parsePage, str } from '../lib/util';
-import { matchOrCreateGuest } from '../lib/guest';
+import { findGuestCandidates, GuestMatchError, matchOrCreateGuest } from '../lib/guest';
 import type { CheckinStatus, GiftMethod } from '../../shared/types';
 
 export const checkinRoutes = new Hono<AppEnv>();
 checkinRoutes.use('*', requireAuth);
+checkinRoutes.onError((err, c) => {
+  if (err instanceof GuestMatchError) {
+    return c.json({ ok: false, error: { code: err.code, message: err.message } }, err.status);
+  }
+  throw err;
+});
+
+/** 只在登录后的审核端展示同名候选，不向自助签到端公开名单。 */
+checkinRoutes.get('/candidates', (c) => {
+  const name = str(c.req.query('name'));
+  if (!name || name.length > 50) {
+    return c.json({ ok: false, error: { code: 'VALIDATION', message: '请填写有效姓名（最多50字）' } }, 400);
+  }
+  return c.json({ ok: true, data: findGuestCandidates(name) });
+});
 
 /** 列表（管理员 / 工作人员） */
 checkinRoutes.get('/', (c) => {
@@ -49,7 +64,13 @@ checkinRoutes.get('/pending', (c) => {
     .where(eq(checkins.status, 'pending'))
     .orderBy(desc(checkins.submittedAt))
     .all();
-  return c.json({ ok: true, data: all.map((r) => checkinToDTO(r)) });
+  const candidatesByName = new Map<string, ReturnType<typeof findGuestCandidates>>();
+  const data = all.map((r) => {
+    if (!candidatesByName.has(r.guestName)) candidatesByName.set(r.guestName, findGuestCandidates(r.guestName));
+    const guestCandidates = candidatesByName.get(r.guestName)!;
+    return { ...checkinToDTO(r), guestCandidates, requiresGuestSelection: guestCandidates.length > 1 };
+  });
+  return c.json({ ok: true, data });
 });
 
 /** 手动补录签到（可同时记礼金） */
@@ -60,7 +81,7 @@ checkinRoutes.post('/', async (c) => {
   const amount = Number(body.amount ?? 0); // 分
   const method = (optionalStr(body.method) as GiftMethod | null) ?? 'cash';
   const note = optionalStr(body.note);
-  const matched = matchOrCreateGuest(name, body.guestId != null ? Number(body.guestId) : null);
+  const matched = matchOrCreateGuest(name, body.guestId);
   const ts = now();
   const checkin = db
     .insert(checkins)
@@ -99,7 +120,8 @@ checkinRoutes.patch('/:id/confirm', async (c) => {
   const method = (optionalStr(body.method) as GiftMethod | null) ?? 'cash';
   const note = optionalStr(body.note);
 
-  const matched = existing.guestId ? { id: existing.guestId, name: existing.guestName } : matchOrCreateGuest(existing.guestName);
+  // 重新核对当前候选；旧版本已误绑的待审记录也不能直接沿用 guestId。
+  const matched = matchOrCreateGuest(existing.guestName, body.guestId);
   const ts = now();
 
   db.update(checkins)

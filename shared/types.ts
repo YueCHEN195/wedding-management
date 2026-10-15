@@ -104,6 +104,23 @@ export interface CheckinDTO {
   attending: Attending | null;
 }
 
+/** 现场辨认宾客所需的信息，不包含电话、备注或邀请凭证。 */
+export interface GuestCandidate {
+  id: number;
+  name: string;
+  groupName: string | null;
+  side: Side | null;
+  attending: Attending | null;
+  headcount: number | null;
+  /** 至少有一条已确认签到；待审核提交不算已签到。 */
+  checkedIn: boolean;
+}
+
+export interface PendingCheckinDTO extends CheckinDTO {
+  guestCandidates: GuestCandidate[];
+  requiresGuestSelection: boolean;
+}
+
 export interface GiftDTO {
   id: number;
   guestId: number | null;

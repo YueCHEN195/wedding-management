@@ -43,6 +43,8 @@ export const rsvps = sqliteTable('rsvps', {
   submittedAt: integer('submitted_at').notNull(),
   updatedAt: integer('updated_at').notNull(),
   clientInfo: text('client_info'),
+  /** 通用回执的私有修改凭证摘要；历史记录与专属回执为空。 */
+  editTokenHash: text('edit_token_hash').unique(),
 });
 
 /** 签到 / 现场提交 */

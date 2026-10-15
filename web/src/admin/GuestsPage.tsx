@@ -117,6 +117,7 @@ export function GuestsPage() {
       fixed: 'right',
       render: (_, r) => (
         <Space size="small" wrap>
+          {isAdmin && <a href={`/invite/${encodeURIComponent(r.inviteToken)}`} target="_blank" rel="noopener noreferrer">预览请柬</a>}
           <a onClick={() => copyLink(r)}>复制链接</a>
           <a onClick={() => markSent.mutate(r.id)}>标记已发送</a>
           <a onClick={() => setQrGuest(r)}>二维码</a>

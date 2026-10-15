@@ -1,8 +1,9 @@
 import type { CheckinDTO, GiftDTO, GuestDTO, RsvpDTO } from '../../shared/types';
 import type { CheckinRow, GiftRow, GuestRow, RsvpRow } from '../db/schema';
+import { env } from '../env';
 
 export function inviteUrl(token: string): string {
-  const base = process.env.PUBLIC_BASE_URL ?? 'http://localhost:5173';
+  const base = env.publicBaseUrl;
   return `${base.replace(/\/$/, '')}/invite/${token}`;
 }
 

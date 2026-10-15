@@ -1,13 +1,36 @@
 import { Hono } from 'hono';
-import { desc, eq, like } from 'drizzle-orm';
+import { getCookie, setCookie } from 'hono/cookie';
+import { createHash, randomBytes } from 'node:crypto';
+import { z } from 'zod';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../db/client';
 import { guests, rsvps } from '../db/schema';
 import { rsvpToDTO } from '../lib/dto';
 import { now, optionalStr, str } from '../lib/util';
 import { allow, clientIp } from '../lib/rateLimit';
 import type { Attending } from '../../shared/types';
+import { env } from '../env';
 
 export const inviteRoutes = new Hono();
+inviteRoutes.use('*', async (c, next) => {
+  c.header('Cache-Control', 'no-store');
+  await next();
+});
+
+const UNIVERSAL_COOKIE = 'wedding_rsvp_edit';
+const isCredential = (value: string | undefined): value is string => !!value && /^[a-f0-9]{64}$/.test(value);
+const credentialHash = (value: string) => createHash('sha256').update(value).digest('hex');
+const universalRsvpSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  attending: z.enum(['yes', 'no', 'maybe']),
+  headcount: z.number().int().min(0).max(20),
+  childrenCount: z.number().int().min(0).max(20).default(0),
+  message: z.string().trim().max(500).nullable().optional(),
+}).superRefine((value, ctx) => {
+  if (value.attending === 'yes' && (value.headcount < 1 || value.childrenCount > value.headcount)) {
+    ctx.addIssue({ code: 'custom', message: '出席总人数至少为1，儿童人数不能超过总人数' });
+  }
+});
 
 function submitRsvp(opts: {
   guestId: number | null;
@@ -59,25 +82,55 @@ function submitRsvp(opts: {
 /** 通用请柬：仅标识这是通用入口 */
 inviteRoutes.get('/', (c) => c.json({ ok: true, data: { universal: true } }));
 
-/** 通用链接提交回执（宾客自行输入姓名） */
+/** 准备私有修改凭证并恢复本浏览器的通用回执，绝不按姓名找回。 */
+inviteRoutes.get('/rsvp', (c) => {
+  const previous = getCookie(c, UNIVERSAL_COOKIE);
+  const token = isCredential(previous) ? previous : randomBytes(32).toString('hex');
+  if (token !== previous) {
+    setCookie(c, UNIVERSAL_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure: env.publicBaseUrl.startsWith('https://'),
+      path: '/api/invite',
+      maxAge: 60 * 60 * 24 * 180,
+    });
+  }
+  const row = db.select().from(rsvps)
+    .where(and(eq(rsvps.editTokenHash, credentialHash(token)), eq(rsvps.source, 'universal'))).get();
+  return c.json({ ok: true, data: row ? rsvpToDTO(row) : null });
+});
+
+/** 通用链接只创建/修改持有私有凭证的回执，不关联同名名单。 */
 inviteRoutes.post('/rsvp', async (c) => {
   if (!allow(`invite-rsvp:${clientIp(c)}`, 30, 60_000)) {
     return c.json({ ok: false, error: { code: 'RATE_LIMITED', message: '提交过于频繁，请稍后再试' } }, 429);
   }
-  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-  const name = str(body.name);
-  if (!name) return c.json({ ok: false, error: { code: 'VALIDATION', message: '请填写您的姓名' } }, 400);
-  const matches = db.select().from(guests).where(like(guests.name, name)).all();
-  const exact = matches.filter((g) => g.name === name);
-  const guestId = exact.length === 1 ? exact[0].id : null;
-  const data = submitRsvp({
-    guestId,
-    guestName: name,
-    attending: (str(body.attending) || 'maybe') as Attending,
-    headcount: Math.max(1, Number(body.headcount) || 1),
-    childrenCount: Math.max(0, Number(body.childrenCount) || 0),
-    message: optionalStr(body.message),
-    source: 'universal',
+  const token = getCookie(c, UNIVERSAL_COOKIE);
+  if (!isCredential(token)) {
+    return c.json({ ok: false, error: { code: 'RSVP_SESSION_REQUIRED', message: '未能读取本浏览器的回执凭证，请允许Cookie并刷新页面后重试' } }, 409);
+  }
+  const parsed = universalRsvpSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ ok: false, error: { code: 'VALIDATION', message: '请检查姓名和出席人数：姓名最多50字、总人数1–20人、儿童人数不超过总人数、留言最多500字' } }, 400);
+  }
+  const body = parsed.data;
+  const hash = credentialHash(token);
+  const data = db.transaction((tx) => {
+    const existing = tx.select().from(rsvps)
+      .where(and(eq(rsvps.editTokenHash, hash), eq(rsvps.source, 'universal'))).get();
+    const ts = now();
+    const values = {
+      guestName: body.name,
+      attending: body.attending,
+      headcount: body.attending === 'yes' ? body.headcount : 0,
+      childrenCount: body.attending === 'yes' ? body.childrenCount : 0,
+      message: body.message || null,
+      updatedAt: ts,
+    };
+    const row = existing
+      ? tx.update(rsvps).set(values).where(eq(rsvps.id, existing.id)).returning().get()!
+      : tx.insert(rsvps).values({ ...values, guestId: null, source: 'universal', submittedAt: ts, editTokenHash: hash }).returning().get();
+    return rsvpToDTO(row);
   });
   return c.json({ ok: true, data });
 });
