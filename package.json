@@ -16,7 +16,15 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/db/migrate.ts",
-    "db:seed": "tsx server/db/seed.ts"
+    "db:seed": "tsx server/db/seed.ts",
+    "lint:setup": "pnpm --dir tooling/eslint install --frozen-lockfile",
+    "lint": "node tooling/eslint/node_modules/eslint/bin/eslint.js .",
+    "lint:fix": "node tooling/eslint/node_modules/eslint/bin/eslint.js . --fix",
+    "format": "node tooling/eslint/node_modules/prettier/bin/prettier.cjs --write",
+    "format:check": "node tooling/eslint/node_modules/prettier/bin/prettier.cjs --check",
+    "check": "pnpm lint && pnpm lint:pilot && pnpm lint:test && pnpm typecheck && pnpm test && pnpm build",
+    "lint:pilot": "node tooling/eslint/node_modules/eslint/bin/eslint.js web/src/admin/GuestsPage.tsx web/src/admin/guests --max-warnings 0",
+    "lint:test": "node --test tooling/eslint/config.test.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",

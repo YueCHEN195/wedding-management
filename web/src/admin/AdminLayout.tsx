@@ -1,8 +1,11 @@
 import { useCallback, useRef } from 'react';
-import { Layout, Menu, Tag, Typography } from 'antd';
+import { Button, Layout, Menu, Tag, Typography } from 'antd';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
+import './tokens.css';
+import './admin.css';
+import { adminCssVariables } from './theme';
 import { replaceSession } from '@/api/session';
 
 const MENU = [
@@ -15,7 +18,12 @@ const MENU = [
   { key: '/admin/export', label: '导出' },
 ];
 
-const STAFF_MENU_KEYS = ['/admin/review', '/admin/checkins', '/admin/gifts', '/admin/guests'];
+const STAFF_MENU = [
+  { key: '/admin/review', label: '现场审核' },
+  { key: '/admin/checkins', label: '签到记录' },
+  { key: '/admin/guests', label: '宾客查询' },
+  { key: '/admin/gifts', label: '礼金记录' },
+];
 
 export interface AdminOutletContext {
   registerNavigationGuard: (guard: () => Promise<boolean>) => () => void;
@@ -32,46 +40,29 @@ export function AdminLayout() {
   const queryClient = useQueryClient();
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: api.me });
 
-  const menu = me?.role === 'staff' ? MENU.filter((m) => STAFF_MENU_KEYS.includes(m.key)) : MENU;
+  const menu = me?.role === 'staff' ? STAFF_MENU : MENU;
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Layout.Sider theme="light" breakpoint="lg" collapsedWidth={0}>
-        <div
-          style={{
-            height: 56,
-            display: 'grid',
-            placeItems: 'center',
-            fontWeight: 700,
-            color: 'var(--brand-red)',
-          }}
-        >
-          婚礼后台
-        </div>
+    <Layout className="admin-shell" style={adminCssVariables}>
+      <Layout.Sider className="admin-sidebar" theme="dark" width={184} breakpoint="lg" collapsedWidth={0}>
+        <div className="admin-brand">婚礼管理<small>WEDDING WORKSPACE</small></div>
         <Menu
+          theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menu}
           onClick={async ({ key }) => { if (key !== location.pathname && await canNavigate()) navigate(key); }}
         />
       </Layout.Sider>
-      <Layout>
-        <Layout.Header
-          style={{
-            background: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingInline: 16,
-          }}
-        >
-          <Typography.Text strong>管理后台</Typography.Text>
+      <Layout className="admin-main">
+        <Layout.Header className="admin-header">
+          <Typography.Text type="secondary">婚礼管理 / {menu.find((item) => item.key === location.pathname)?.label ?? '工作台'}</Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Tag color={me?.role === 'admin' ? 'red' : 'blue'}>
+            <Tag variant="filled">
               {me?.role === 'admin' ? '管理员' : '工作人员'}
             </Tag>
             <Typography.Text>{me?.username}</Typography.Text>
-            <a
+            <Button type="text" size="small"
               onClick={async () => {
                 if (!await canNavigate()) return;
                 await api.logout();
@@ -80,10 +71,10 @@ export function AdminLayout() {
               }}
             >
               退出
-            </a>
+            </Button>
           </div>
         </Layout.Header>
-        <Layout.Content style={{ padding: 16 }}>
+        <Layout.Content className={`admin-content${location.pathname === '/admin/review' ? ' admin-content-workbench' : ''}`}>
           <Outlet context={{ registerNavigationGuard } satisfies AdminOutletContext} />
         </Layout.Content>
       </Layout>

@@ -1,0 +1,24 @@
+/* Shared admin geometry and surfaces. Canonical brand colors: theme.ts. */
+.admin-shell, .admin-dialog {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --font-caption: 12px; --font-secondary: 13px; --font-body: 14px; --font-section: 16px; --font-heading: 20px; --font-page: 24px;
+  --radius-sm: 4px; --radius-control: 6px; --radius-panel: 8px;
+  --control-height: 36px; --touch-height: 44px;
+  --surface-queue: #fffefd; --surface-ticket: #f7f3ed; --surface-ticket-hover: #f4e8de; --surface-ticket-selected: #f0dacc;
+  --surface-summary: #efdfd3; --scroll-thumb: #c7b9ad; --scroll-thumb-hover: #a89180;
+  --scroll-size: 6px; --scroll-border: 1px; --line-width: 1px;
+  --filter-width: 240px; --select-width: 160px; --queue-ticket-min: 180px;
+  --review-drawer-width: min(600px, 100vw); --review-queue-column: 0.26fr; --review-directory-column: 0.74fr;
+  --queue-share: 0.34fr; --directory-share: 0.66fr;
+}
+.admin-module-scroll { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; overscroll-behavior: contain; }
+.admin-module-scroll::-webkit-scrollbar, .admin-module-scroll ::-webkit-scrollbar { width: var(--scroll-size); height: var(--scroll-size); }
+.admin-module-scroll::-webkit-scrollbar-thumb, .admin-module-scroll ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: var(--radius-control); border: var(--scroll-border) solid transparent; background-clip: padding-box; }
+.admin-module-scroll::-webkit-scrollbar-thumb:hover, .admin-module-scroll ::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-thumb-hover); }
+.admin-module-scroll::-webkit-scrollbar-track, .admin-module-scroll ::-webkit-scrollbar-track { background: transparent; }
+.admin-shell, .admin-dialog {
+  --drawer-width: min(600px, 100vw);
+  --guest-media-width: 280px;
+  --guest-row-height: 56px;
+}
+.admin-shell, .admin-dialog { --guest-media-max-height: 65dvh; }

@@ -64,11 +64,20 @@ pnpm dev
 | `pnpm build` | 构建前端到 `web/dist` |
 | `pnpm start` | 生产模式启动（需先 `pnpm build`） |
 | `pnpm typecheck` | 类型检查 |
+| `pnpm lint:setup` | 首次安装隔离的ESLint/Prettier依赖（不改变应用TS7） |
+| `pnpm lint` | 全项目ESLint检查，显示历史警告 |
+| `pnpm lint:pilot` | 宾客管理试点严格检查，禁止警告 |
+| `pnpm lint:test` | 验证分层与Hooks规则实际生效 |
+| `pnpm check` | ESLint、试点严格检查、规则测试、类型检查、测试、构建 |
+| `pnpm format <文件或目录>` | 使用Prettier格式化指定范围 |
+| `pnpm format:check <文件或目录>` | 检查指定范围的格式 |
 | `pnpm db:generate` | 依据 schema 生成迁移 |
 | `pnpm db:migrate` | 执行迁移 |
 | `pnpm db:seed` | 写入账号与 demo 数据 |
 
 ## 目录结构
+
+代码分层、规则取舍与历史警告见 [代码质量规范](docs/技术/代码质量规范.md)。新环境在`pnpm install`后执行一次`pnpm lint:setup`；依赖更新提交`tooling/eslint/pnpm-lock.yaml`。
 
 ```
 server/    Hono 后端（路由、鉴权、数据库）

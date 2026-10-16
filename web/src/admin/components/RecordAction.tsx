@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Form, Input, List, Modal, Typography, message } from 'antd';
+import { adminFeedback } from '../theme';
 import { api, ApiError } from '@/api/client';
 import type { LifecycleAction, LifecycleEntity, OperationLogDTO } from '@shared/types';
 import { formatDateTime, yuan } from '@/lib/format';
@@ -19,10 +20,10 @@ export function RecordAction({ target, onClose }: { target: RecordActionTarget; 
   const submit = useMutation({
     mutationFn: (v: { reason: string }) => api.lifecycle.apply(target.entity, target.id, { ...v, action: target.action, token: preview.data!.token }),
     onSuccess: () => {
-      for (const key of ['guests', 'guest-groups', 'guest-detail', 'rsvps', 'checkins', 'checkin-candidates', 'gifts', 'stats', 'record-history', 'action-preview']) {
+      for (const key of ['guests', 'guest-groups', 'guest-detail', 'rsvps', 'checkins', 'checkin-candidates', 'gifts', 'stats', 'record-history', 'action-preview', 'review-directory', 'staff-guests', 'staff-guest-detail']) {
         qc.invalidateQueries({ queryKey: [key] });
       }
-      message.success('操作已保存，原记录和操作历史已保留'); onClose();
+      message.success({ content: '操作已保存，原记录和操作历史已保留', duration: adminFeedback.toastDuration }); onClose();
     },
     onError: (e) => {
       message.error(e instanceof ApiError ? e.message : '操作失败，请重试');

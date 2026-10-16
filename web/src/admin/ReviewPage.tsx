@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import { Alert, Button, Empty, Form, Image, Input, Modal, Radio, Select, Space, Typography } from 'antd';
+import { Alert, Button, Drawer, Empty, Form, Input, Modal, Radio, Select, Space, Typography, message } from 'antd';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import type { AdminOutletContext } from './AdminLayout';
 import './review.css';
+import { adminCssVariables, adminFeedback } from './theme';
+import { ReviewDirectory } from './components/ReviewDirectory';
+import { CheckinEntry } from './components/CheckinEntry';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { AttendanceFields, attendanceValues, type AttendanceValues } from './components/AttendanceFields';
 import { RecordAction, type RecordActionTarget } from './components/RecordAction';
@@ -14,6 +17,8 @@ import { attendanceFromRsvp } from '@shared/attendance';
 import type { FormInstance } from 'antd';
 import { MAX_TEXT_LENGTH } from '@shared/constraints';
 import { ATTENDING_LABEL, METHOD_LABEL, SIDE_LABEL, formatDateTime, yuan } from '@/lib/format';
+
+const REVIEW_FORM_ID = 'review-checkin-form';
 
 interface CheckinFormValues extends AttendanceValues {
   giftReceipt?: 'none' | 'received';
@@ -73,11 +78,11 @@ function GuestSelection({ query }: { query: UseQueryResult<GuestCandidate[], Err
   if (query.isPending) return <Typography.Paragraph>正在核对宾客名单…</Typography.Paragraph>;
   if (query.isError) return <Alert type="error" showIcon title="宾客名单加载失败，请重试后再确认" action={<Button onClick={() => query.refetch()}>重试</Button>} />;
   const candidates = query.data;
-  if (candidates.length === 0) return <Alert type="info" title="未找到同名宾客，确认后将自动建立新档案" style={{ marginBottom: 16 }} />;
+  if (candidates.length === 0) return <Typography.Paragraph type="secondary">未找到同名宾客，确认后将自动建立新档案。</Typography.Paragraph>;
   const label = (g: GuestCandidate) => `#${g.id} · ${g.name} · ${g.checkedIn ? '已签到' : '未签到'} · ${g.side ? SIDE_LABEL[g.side] : '归属未填'} · ${g.groupName || '未分组'} · ${g.attending ? ATTENDING_LABEL[g.attending] : '未回执'}${g.attending === 'yes' ? ` ${g.headcount}人（儿童${g.childrenCount ?? 0}人）` : ''}`;
   return (
     <>
-      <Alert type="info" showIcon title="请核对是否为名单中的本人；如果是另一位同名宾客，请选择新建" style={{ marginBottom: 16 }} />
+      {candidates.length > 1 && <Alert type="warning" showIcon title="有多位同名宾客，请核对分组与归属后选择本人" />}
       <Form.Item name="guestId" label="对应宾客" rules={[{ required: true, message: '请选择对应宾客，或新增另一位同名宾客' }]}>
         <Select placeholder="核对已有宾客，或新增另一位同名宾客" options={[
           ...candidates.map((g) => ({ value: g.id as number | 'new', label: label(g), disabled: g.checkedIn })),
@@ -99,6 +104,9 @@ function GuestSelection({ query }: { query: UseQueryResult<GuestCandidate[], Err
 
 export function ReviewPage() {
   const qc = useQueryClient();
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me });
+  const [queueExpanded, setQueueExpanded] = useState(true);
+  const stats = useQuery({ queryKey: ['stats', 'summary'], queryFn: api.stats.summary, enabled: me.data?.role === 'admin', refetchInterval: 15000 });
   const navigate = useNavigate();
   const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
   const [recordAction, setRecordAction] = useState<RecordActionTarget | null>(null);
@@ -108,7 +116,6 @@ export function ReviewPage() {
   const [qrOpen, setQrOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [manualForm] = Form.useForm();
   const activeForm = manualOpen ? manualForm : form;
@@ -134,10 +141,10 @@ export function ReviewPage() {
 
   const pending = useQuery({ queryKey: ['checkins', 'pending'], queryFn: api.checkins.pending, refetchInterval: 5000 });
   const invalidate = () => {
-    for (const key of ['checkins', 'checkin-candidates', 'stats', 'gifts', 'guests', 'guest-detail']) qc.invalidateQueries({ queryKey: [key] });
+    for (const key of ['checkins', 'checkin-candidates', 'stats', 'gifts', 'guests', 'guest-detail', 'review-directory', 'staff-guests']) qc.invalidateQueries({ queryKey: [key] });
   };
   const saved = (data: CheckinDTO, duplicate = false) => {
-    setReceipt(`${data.guestName} · 已确认到场${data.actualHeadcount}人（其中儿童${data.actualChildrenCount}人） · ${data.giftAmount == null ? '未登记礼金' : `礼金 ¥${yuan(data.giftAmount)} · ${data.giftMethod ? METHOD_LABEL[data.giftMethod] : ''}`}${duplicate ? '。本次为重试，未重复登记。' : ''}`);
+    message.success({ duration: adminFeedback.toastDuration, content: `${data.guestName} · 已确认到场${data.actualHeadcount}人（其中儿童${data.actualChildrenCount}人） · ${data.giftAmount == null ? '未登记礼金' : `礼金 ¥${yuan(data.giftAmount)} · ${data.giftMethod ? METHOD_LABEL[data.giftMethod] : ''}`}${duplicate ? '。本次为重试，未重复登记。' : ''}` });
     setDirty(false); setSubmitError(null); setConfirming(null); setManualOpen(false);
     invalidate();
   };
@@ -176,7 +183,7 @@ export function ReviewPage() {
   }, [dirty, saving]);
   const switchDraft = async (next: () => void) => {
     if (!await canLeave()) return;
-    setDirty(false); setSubmitError(null); setReceipt(null); next();
+    setDirty(false); setSubmitError(null); next();
   };
   const openTicket = (item: CheckinDTO) => {
     if (confirming?.id === item.id && !manualOpen) return;
@@ -211,38 +218,74 @@ export function ReviewPage() {
       <Space wrap>
         <Button type="primary" icon={<PlusOutlined />} onClick={openManual} disabled={saving}>查人 / 手动补录</Button>
         <Button icon={<ReloadOutlined />} loading={pending.isFetching} onClick={() => pending.refetch()}>刷新队列</Button>
-        <Button onClick={() => setQrOpen(true)}>现场入口二维码</Button>
+        <Button onClick={() => setQrOpen(true)}>扫码 / 代登记</Button>
       </Space>
       <span className="review-connection">{pending.dataUpdatedAt ? `最近更新 ${new Date(pending.dataUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })} · 每5秒刷新` : '正在连接待审队列'}</span>
     </div>
     {pending.isError && <Alert showIcon type="error" title={pending.data ? '队列刷新失败，当前显示上次成功的数据' : '无法加载待审队列'}
       description="请检查连接后重试；连接失败不代表没有待审宾客。当前填写内容会保留。" action={<Button onClick={() => pending.refetch()}>重试连接</Button>} />}
-    {receipt && <Alert showIcon type="success" title="已保存" description={receipt} action={<Button onClick={() => setReceipt(null)}>知道了</Button>} />}
+    {me.data?.role === 'admin' && <div className="review-summary" aria-label="婚礼现场概览">
+      {stats.isError ? <Alert type="warning" title="统计更新失败，请重试" action={<Button onClick={() => stats.refetch()}>重试</Button>} /> : <>
+        <div><span>当前宾客档案</span><strong>{stats.data?.guestTotal ?? '—'} <small>组</small></strong></div>
+        <div><span>预计出席（回执）</span><strong>{stats.data?.attendingHeadcount ?? '—'} <small>人</small></strong></div>
+        <div><span>已核对到场</span><strong>{stats.data?.actualHeadcount ?? '—'} <small>人</small></strong>{!!stats.data?.unknownHeadcountGroups && <small>另有{stats.data.unknownHeadcountGroups}组人数待补记</small>}</div>
+        <div><span>待处理提交</span><strong>{pending.data?.length ?? '—'} <small>条</small></strong></div>
+      </>}
+    </div>}
     <div className="review-grid">
       <aside className="review-queue" aria-label="待审核队列">
-        <div className="review-queue-heading"><h2>待审核 {pending.data ? `（${items.length}）` : ''}</h2><span className="review-connection">先到先处理</span></div>
-        <div className="review-queue-list">
+        <div className="review-queue-heading"><h2>待审核 {pending.data ? `（${items.length}）` : ''}</h2>
+          {items.length > 3 ? <Button type="text" onClick={() => setQueueExpanded(!queueExpanded)} aria-expanded={queueExpanded}>{queueExpanded ? '收起队列' : `展开全部 ${items.length} 条`}</Button> : <span className="review-connection">先到先处理</span>}
+        </div>
+        <div className="review-queue-list admin-module-scroll">
           {pending.isPending ? <div className="review-placeholder" role="status">正在加载待审提交…</div>
             : !pending.data ? <div className="review-placeholder">队列尚未加载成功，请重试连接。</div>
               : items.length === 0 ? <div className="review-placeholder"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={pending.isError ? '上次加载时无待审提交，当前状态未知' : '当前没有待审提交'} /></div>
-                : items.map((item) => <button key={item.id} className="review-ticket" aria-pressed={confirming?.id === item.id && !manualOpen}
+                : (queueExpanded ? items : items.slice(0, 3)).map((item) => <button key={item.id} className="review-ticket" aria-pressed={confirming?.id === item.id && !manualOpen}
                   disabled={saving} onClick={() => openTicket(item)}>
                   <strong>{item.guestName}</strong><small>#{item.id} · {item.source === 'self' ? '自助扫码' : '手动补录'} · {formatDateTime(item.submittedAt)}</small>
                   {(item.guestArchived || item.requiresGuestSelection) && <small className="review-ticket-hint">{item.guestArchived ? '关联宾客已归档' : '同名宾客，请核对本人'}</small>}
                 </button>)}
         </div>
       </aside>
-      <section className="review-panel" aria-label="签到审核工作区">
-        {!active ? <div className="review-placeholder"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={receipt ? '本次处理已完成，请选择下一位宾客' : '从左侧选择一位宾客，或查人手动补录'} /></div> : <>
-          <div className="review-panel-heading"><div><h2>{manualOpen ? '查人 / 手动补录' : confirming?.guestName}</h2>
-            <p>{manualOpen ? '为现场来宾核对档案并登记到场' : `提交 #${confirming?.id} · ${confirming?.source === 'self' ? '自助扫码' : '手动补录'}`}</p></div>
-            <span className="review-connection">{dirty ? '有未保存的填写' : '请核对后保存'}</span></div>
-          {noLongerPending && <Alert type="warning" showIcon title="这条提交已不在待审核队列，可能已由其他人处理" description="输入已保留，请先查看签到记录核对结果，不能再次确认。" action={<Button onClick={goToRecords}>查看记录</Button>} />}
-          {confirming?.guestArchived && <Alert type="warning" showIcon title="关联宾客已归档，请先由管理员恢复，或将本次提交标记无效" />}
-          {submitError && <Alert type="error" showIcon title="本次保存未得到成功确认" description={submitError} />}
-          <Form key={manualOpen ? 'manual' : `confirm-${confirming?.id}`} form={activeForm} layout="vertical" disabled={saving}
+      <ReviewDirectory admin={me.data?.role === 'admin'} disabled={saving} selectedId={confirming?.id}
+        onNavigate={(path) => { void switchDraft(() => navigate(path)); }}
+        onProcess={(row) => {
+          if (row.pendingId != null) {
+            const item = pending.data?.find((item) => item.id === row.pendingId);
+            if (item) openTicket(item);
+            else { void pending.refetch(); message.info('待审记录已变化，正在刷新队列，请重新核对'); }
+          } else {
+            void switchDraft(() => {
+              manualForm.resetFields(); setConfirming(null); setManualSubmissionKey(crypto.randomUUID()); setManualOpen(true);
+              manualForm.setFieldsValue({ guestName: row.name });
+            });
+          }
+        }} />
+    </div>
+    <Drawer rootClassName="admin-dialog review-drawer" rootStyle={adminCssVariables}
+      classNames={{ body: 'admin-module-scroll' }}
+      styles={{ body: { background: 'var(--admin-processing)' }, footer: { background: 'var(--admin-processing)' } }} size="var(--review-drawer-width)" open={active} destroyOnHidden
+      title={manualOpen ? '查人 / 手动补录' : `核对签到 · ${confirming?.guestName ?? ''}`}
+      extra={<span className="review-connection">{dirty ? '有未保存的填写' : '请核对后保存'}</span>}
+      onClose={() => { void switchDraft(() => { setConfirming(null); setManualOpen(false); }); }}
+      mask={{ closable: !saving }} closable={!saving} keyboard={!saving}
+      footer={
+            <div className="review-save">
+              <div className="review-save-summary" aria-live="polite">本次登记：<strong>{displayName}</strong> · {(values.actualHeadcountInput ?? '1') || '待填'}人（其中儿童{(values.actualChildrenInput ?? '0') || '待填'}人）<br />
+                {received ? `礼金 ${amount == null ? '金额待填写' : `¥${yuan(amount)}`} · ${values.method ? METHOD_LABEL[values.method] : '现金'}` : '仅确认到场，不产生礼金记录'}</div>
+              <div className="review-save-actions"><Button type="primary" htmlType="submit" form={REVIEW_FORM_ID} loading={saving} disabled={blockSave}>{saveLabel}</Button>
+                <Button disabled={saving} onClick={() => { void switchDraft(() => { setConfirming(null); setManualOpen(false); }); }}>取消填写</Button></div>
+            </div>
+      }>
+      <Typography.Paragraph type="secondary">{manualOpen ? '为现场来宾核对档案并登记到场' : `提交 #${confirming?.id} · ${confirming?.source === 'self' ? '自助扫码' : '手动补录'}`}</Typography.Paragraph>
+          <Form id={REVIEW_FORM_ID} className="review-form" key={manualOpen ? 'manual' : `confirm-${confirming?.id}`} form={activeForm} layout="vertical" disabled={saving}
             initialValues={{ giftReceipt: 'received', actualHeadcountInput: '1', actualChildrenInput: '0' }}
             onValuesChange={() => setDirty(true)} onFinish={(v) => manualOpen ? manual.mutate(v) : confirm.mutate(v)}>
+            <div className="review-form-body admin-module-scroll">
+              {noLongerPending && <Alert type="warning" showIcon title="这条提交已不在待审核队列，可能已由其他人处理" description="输入已保留，请先查看签到记录核对结果，不能再次确认。" action={<Button onClick={goToRecords}>查看记录</Button>} />}
+              {confirming?.guestArchived && <Alert type="warning" showIcon title="关联宾客已归档，请先由管理员恢复，或将本次提交标记无效" />}
+              {submitError && <Alert type="error" showIcon title="本次保存未得到成功确认" description={submitError} />}
             <div className="review-section"><h3>1 · 核对宾客</h3>
               {manualOpen && <Form.Item name="guestName" label="来宾姓名" rules={[{ required: true, whitespace: true, max: 30, message: '请填写姓名（1–30字）' }]}><Input maxLength={30} placeholder="输入姓名查找宾客档案" /></Form.Item>}
               {(!manualOpen || !!manualName) && <GuestSelection query={candidates} />}
@@ -254,17 +297,11 @@ export function ReviewPage() {
             <div className="review-section review-gift"><h3>3 · 礼金登记</h3><OptionalGiftFields />
               <Form.Item name="note" label="备注（可选）" rules={[{ max: MAX_TEXT_LENGTH, message: '备注最多500字' }]}><Input maxLength={MAX_TEXT_LENGTH} placeholder="补充现场核对信息" /></Form.Item>
             </div>
-            <div className="review-save">
-              <div className="review-save-summary" aria-live="polite">本次登记：<strong>{displayName}</strong> · {(values.actualHeadcountInput ?? '1') || '待填'}人（其中儿童{(values.actualChildrenInput ?? '0') || '待填'}人）<br />
-                {received ? `礼金 ${amount == null ? '金额待填写' : `¥${yuan(amount)}`} · ${values.method ? METHOD_LABEL[values.method] : '现金'}` : '仅确认到场，不产生礼金记录'}</div>
-              <div className="review-save-actions"><Button type="primary" htmlType="submit" loading={saving} disabled={blockSave}>{saveLabel}</Button>
-                <Button disabled={saving} onClick={() => { void switchDraft(() => { setConfirming(null); setManualOpen(false); }); }}>取消填写</Button></div>
+              {!manualOpen && confirming && <div className="review-secondary-action"><Button type="text" disabled={saving || noLongerPending} onClick={() => setRecordAction({ entity: 'checkin', id: confirming.id, action: 'reject' })}>将此提交标记无效</Button><Typography.Text type="secondary">填写原因后保留原提交，可在签到记录恢复</Typography.Text></div>}
             </div>
+
           </Form>
-          {!manualOpen && confirming && <div className="review-secondary-action"><Button type="text" disabled={saving || noLongerPending} onClick={() => setRecordAction({ entity: 'checkin', id: confirming.id, action: 'reject' })}>将此提交标记无效</Button><Typography.Text type="secondary">填写原因后保留原提交，可在签到记录恢复</Typography.Text></div>}
-        </>}
-      </section>
-    </div>
-    <Modal title="现场入口总码" open={qrOpen} footer={null} onCancel={() => setQrOpen(false)}><Image src={api.checkins.qrUrl()} width={300} /><Typography.Paragraph type="secondary">宾客扫码进入自助签到页</Typography.Paragraph></Modal>
+    </Drawer>
+    <CheckinEntry open={qrOpen} onClose={() => setQrOpen(false)} onCreated={invalidate} />
   </div>;
 }

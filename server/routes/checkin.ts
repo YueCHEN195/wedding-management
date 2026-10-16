@@ -23,7 +23,7 @@ publicCheckinRoutes.post('/self', async (c) => {
 });
 
 /** 现场入口总码（编码 /checkin 链接） */
-publicCheckinRoutes.get('/qr', async (c) => {
+publicCheckinRoutes.get('/qr', async (_c) => {
   const base = env.publicBaseUrl;
   const buf = await qrPng(`${base.replace(/\/$/, '')}/checkin`, 640);
   return binaryResponse(buf, {

@@ -1,4 +1,6 @@
 import type {
+  ReviewGuestRow,
+  ReviewGuestStatus,
   CheckinDTO,
   LifecycleEntity,
   LifecycleAction,
@@ -11,6 +13,8 @@ import type {
   GiftDTO,
   GiftListDTO,
   GuestDTO,
+  StaffGuestDTO,
+  StaffGuestDetailDTO,
   GuestDetailDTO,
   ImportResult,
   InviteData,
@@ -96,6 +100,10 @@ export const api = {
   logout: () => apiFetch<boolean>('/api/auth/logout', { method: 'POST' }),
 
   guests: {
+    workbench: (p: { keyword?: string; status?: ReviewGuestStatus; side?: Side; page?: number; pageSize?: number }) =>
+      apiFetch<Paginated<ReviewGuestRow>>(`/api/guests/workbench${qs(p)}`),
+    staffList: (p: GuestListParams) => apiFetch<Paginated<StaffGuestDTO>>(`/api/guests${qs(p)}`),
+    staffDetail: (id: number) => apiFetch<StaffGuestDetailDTO>(`/api/guests/${id}/detail`),
     list: (p: GuestListParams) => apiFetch<Paginated<GuestDTO>>(`/api/guests${qs(p)}`),
     groups: () => apiFetch<string[]>('/api/guests/groups'),
     create: (data: Partial<GuestDTO>) =>

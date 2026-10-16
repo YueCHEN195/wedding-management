@@ -222,3 +222,37 @@ export interface LifecyclePreview {
   effect: string;
   history: OperationLogDTO[];
 }
+
+/** 工作人员现场查询白名单，不包含联系方式、备注或邀请凭证。 */
+export interface StaffGuestDTO {
+  id: number;
+  name: string;
+  groupName: string | null;
+  side: Side | null;
+  archivedAt: number | null;
+  attending: Attending | null;
+  headcount: number | null;
+  childrenCount: number | null;
+  checkedIn: boolean;
+}
+export interface StaffGuestDetailDTO {
+  guest: StaffGuestDTO;
+  checkins: Pick<CheckinDTO, 'id' | 'status' | 'submittedAt' | 'confirmedAt' | 'actualHeadcount' | 'actualChildrenCount'>[];
+}
+
+/** Read-only onsite directory; financial/private fields are admin-only. */
+export type ReviewGuestStatus = 'pending' | 'confirmed' | 'unconfirmed';
+export interface ReviewGuestRow {
+  key: string;
+  guestId: number | null;
+  name: string;
+  groupName: string | null;
+  side: Side | null;
+  expected: number | null;
+  actual: number | null;
+  status: ReviewGuestStatus;
+  pendingId: number | null;
+  time: number | null;
+  giftTotal?: number | null;
+  note?: string | null;
+}

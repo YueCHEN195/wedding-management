@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
+import { reviewIndex } from '../services/reviewIndex';
 import { and, asc, count, desc, eq, inArray, isNull, isNotNull, like, or } from 'drizzle-orm';
 import { db, sqlite } from '../db/client';
 import { checkins, gifts, guests, rsvps } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
-import { checkinToDTO, giftToDTO, guestToDTO, inviteUrl, rsvpToDTO } from '../lib/dto';
+import { checkinToDTO, giftToDTO, guestToDTO, inviteUrl, rsvpToDTO, staffGuestToDTO } from '../lib/dto';
 import { generateToken, now, parsePage, str } from '../lib/util';
 import { attachmentHeaders, binaryResponse, XLSX_MIME } from '../lib/http';
 import { qrPng } from '../services/qrcode';
@@ -21,6 +22,7 @@ guestRoutes.onError(inputErrorHandler);
 guestRoutes.get('/', (c) => {
   const { page, pageSize, offset } = parsePage(c.req.url);
   const url = new URL(c.req.url);
+  const isAdmin = c.get('user').role === 'admin';
   const keyword = str(url.searchParams.get('keyword'));
   const status = enumQuery(url.searchParams.get('status'), ['pending', 'sent', 'viewed', 'rsvp'] as const);
   const groupName = url.searchParams.get('groupName');
@@ -30,7 +32,7 @@ guestRoutes.get('/', (c) => {
   const archived = enumQuery(url.searchParams.get('archived'), ['only', 'all'] as const);
   if (archived === 'only') conds.push(isNotNull(guests.archivedAt));
   else if (archived !== 'all') conds.push(isNull(guests.archivedAt));
-  if (keyword) conds.push(or(like(guests.name, `%${keyword}%`), like(guests.phone, `%${keyword}%`)));
+  if (keyword) conds.push(isAdmin ? or(like(guests.name, `%${keyword}%`), like(guests.phone, `%${keyword}%`)) : like(guests.name, `%${keyword}%`));
   if (status) conds.push(eq(guests.status, status));
   if (groupName) conds.push(eq(guests.groupName, groupName));
   if (side) conds.push(eq(guests.side, side));
@@ -48,16 +50,33 @@ guestRoutes.get('/', (c) => {
 
   const ids = rows.map((r) => r.id);
   const attendingMap = new Map<number, Attending>();
+  const rsvpMap = new Map<number, RsvpRow>();
+  const checkedIds = new Set<number>();
   if (ids.length) {
-    for (const r of db.select().from(rsvps).where(inArray(rsvps.guestId, ids)).all()) {
-      if (r.guestId != null) attendingMap.set(r.guestId, r.attending as Attending);
+    for (const r of db.select().from(rsvps).where(inArray(rsvps.guestId, ids)).orderBy(asc(rsvps.submittedAt), asc(rsvps.id)).all()) {
+      if (r.guestId != null) { attendingMap.set(r.guestId, r.attending as Attending); rsvpMap.set(r.guestId, r); }
     }
   }
 
+  if (!isAdmin && ids.length) {
+    for (const r of db.select({ guestId: checkins.guestId }).from(checkins).where(and(inArray(checkins.guestId, ids), eq(checkins.status, 'confirmed'))).all()) {
+      if (r.guestId != null) checkedIds.add(r.guestId);
+    }
+  }
   return c.json({
     ok: true,
-    data: { items: rows.map((r) => guestToDTO(r, attendingMap.get(r.id) ?? null)), total, page, pageSize },
+    data: { items: rows.map((r) => isAdmin ? guestToDTO(r, attendingMap.get(r.id) ?? null) : staffGuestToDTO(r, rsvpMap.get(r.id), checkedIds.has(r.id))), total, page, pageSize },
   });
+});
+
+/** Onsite read model; existing list/detail contracts stay unchanged. */
+guestRoutes.get('/workbench', (c) => {
+  const url = new URL(c.req.url);
+  return c.json({ ok: true, data: reviewIndex({
+    ...parsePage(c.req.url, 10), keyword: str(url.searchParams.get('keyword')),
+    status: enumQuery(url.searchParams.get('status'), ['pending', 'confirmed', 'unconfirmed'] as const) ?? undefined,
+    side: enumQuery(url.searchParams.get('side'), ['male', 'female', 'both'] as const) ?? undefined,
+  }, c.get('user').role === 'admin') });
 });
 
 /** 分组列表（用于筛选下拉） */
@@ -118,12 +137,19 @@ guestRoutes.post('/:id/mark-sent', requireAdmin, (c) => {
 });
 
 /** 单个宾客详情（回执 / 签到 / 礼金） */
-guestRoutes.get('/:id/detail', requireAdmin, (c) => {
+guestRoutes.get('/:id/detail', (c) => {
   const id = parseId(c.req.param('id'));
   const guest = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
-  const rsvpRow = db.select().from(rsvps).where(eq(rsvps.guestId, id)).orderBy(desc(rsvps.submittedAt)).get();
+  const rsvpRow = db.select().from(rsvps).where(eq(rsvps.guestId, id)).orderBy(desc(rsvps.submittedAt), desc(rsvps.id)).get();
   const checkinRows = db.select().from(checkins).where(eq(checkins.guestId, id)).orderBy(desc(checkins.submittedAt)).all();
+  if (c.get('user').role === 'staff') {
+    return c.json({ ok: true, data: {
+      guest: staffGuestToDTO(guest, rsvpRow, checkinRows.some((r) => r.status === 'confirmed')),
+      checkins: checkinRows.map((r) => ({ id: r.id, status: r.status, submittedAt: r.submittedAt,
+        confirmedAt: r.confirmedAt, actualHeadcount: r.actualHeadcount, actualChildrenCount: r.actualChildrenCount })),
+    } });
+  }
   const giftRows = db.select().from(gifts).where(eq(gifts.guestId, id)).orderBy(desc(gifts.recordedAt)).all();
   const giftTotal = giftRows.filter((g) => g.voidedAt == null).reduce((s, g) => s + g.amount, 0);
   return c.json({
@@ -139,7 +165,7 @@ guestRoutes.get('/:id/detail', requireAdmin, (c) => {
 });
 
 /** 专属二维码 */
-guestRoutes.get('/:id/qr', async (c) => {
+guestRoutes.get('/:id/qr', requireAdmin, async (c) => {
   const id = parseId(c.req.param('id'));
   const guest = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
@@ -148,7 +174,7 @@ guestRoutes.get('/:id/qr', async (c) => {
 });
 
 /** 专属海报 */
-guestRoutes.get('/:id/poster', async (c) => {
+guestRoutes.get('/:id/poster', requireAdmin, async (c) => {
   const id = parseId(c.req.param('id'));
   const guest = db.select().from(guests).where(eq(guests.id, id)).get();
   if (!guest) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
@@ -157,7 +183,7 @@ guestRoutes.get('/:id/poster', async (c) => {
 });
 
 /** 批量海报 ZIP（仅管理员） */
-guestRoutes.get('/posters/export', requireAdmin, async (c) => {
+guestRoutes.get('/posters/export', requireAdmin, async (_c) => {
   const rows = db.select().from(guests).where(isNull(guests.archivedAt)).orderBy(asc(guests.id)).all();
   const files: { name: string; buffer: Buffer }[] = [];
   for (const g of rows) {
@@ -202,7 +228,7 @@ guestRoutes.post('/import', requireAdmin, async (c) => {
 });
 
 /** 导出 Excel */
-guestRoutes.get('/export', requireAdmin, async (c) => {
+guestRoutes.get('/export', requireAdmin, async (_c) => {
   const rows = db.select().from(guests).where(isNull(guests.archivedAt)).orderBy(asc(guests.id)).all();
   const statusLabel: Record<string, string> = { pending: '待邀请', sent: '已发送', viewed: '已查看', rsvp: '已回执' };
   const sideLabel: Record<string, string> = { male: '男方', female: '女方', both: '双方' };

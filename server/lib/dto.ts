@@ -1,4 +1,4 @@
-import type { CheckinDTO, GiftDTO, GuestDTO, RsvpDTO } from '../../shared/types';
+import type { CheckinDTO, GiftDTO, GuestDTO, RsvpDTO, StaffGuestDTO } from '../../shared/types';
 import type { CheckinRow, GiftRow, GuestRow, RsvpRow } from '../db/schema';
 import { env } from '../env';
 
@@ -74,5 +74,13 @@ export function giftToDTO(row: GiftRow): GiftDTO {
     checkinId: row.checkinId,
     recordedAt: row.recordedAt,
     voidedAt: row.voidedAt,
+  };
+}
+
+export function staffGuestToDTO(row: GuestRow, rsvp: RsvpRow | undefined, checkedIn: boolean): StaffGuestDTO {
+  return {
+    id: row.id, name: row.name, groupName: row.groupName, side: row.side,
+    archivedAt: row.archivedAt, attending: rsvp?.attending ?? null,
+    headcount: rsvp?.headcount ?? null, childrenCount: rsvp?.childrenCount ?? null, checkedIn,
   };
 }
