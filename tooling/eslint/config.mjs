@@ -118,7 +118,7 @@ export default tseslint.config(
     },
   },
   {
-    // These views are the first migrated feature. Expand this boundary as pages migrate.
+    // Feature views cannot own network requests; page entries compose hooks and views.
     files: ['web/src/admin/guests/Guest*.tsx', 'web/src/**/*.view.tsx'],
     rules: {
       'no-restricted-imports': [
@@ -144,7 +144,7 @@ export default tseslint.config(
   },
   { files: ['tests/**/*.ts'], languageOptions: { globals: globals.node } },
   {
-    files: ['web/src/admin/guests/**/*.{ts,tsx}'],
+    files: ['web/src/**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],

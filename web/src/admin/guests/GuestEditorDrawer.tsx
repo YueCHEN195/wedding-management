@@ -61,7 +61,7 @@ export function GuestEditorDrawer({ model }: { model: Props }) {
       closable={!save.isPending}
       extra={dirty ? <Typography.Text type="secondary">有未保存的修改</Typography.Text> : undefined}
       footer={
-        <div className="guest-drawer-footer">
+        <div className="admin-drawer-footer">
           <Button
             onClick={() => {
               void closeDrawer();

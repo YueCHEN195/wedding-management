@@ -1,4 +1,5 @@
-import { Button, Dropdown, Empty, Space, Table, Tag, Tooltip } from 'antd';
+import { StatusTag, type StatusTone } from '../components/StatusTag';
+import { Button, Dropdown, Empty, Space, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { GuestDTO, GuestStatus, Side } from '@shared/types';
 import { ATTENDING_LABEL, SIDE_LABEL, STATUS_LABEL, formatDateTime } from '@/lib/format';
@@ -7,10 +8,10 @@ import { guestMenu } from './guestMenu';
 import type { GuestManagementModel } from './useGuestManagement';
 // Reserve readable notes after separating attendance and invitation status.
 const TABLE_WIDTH = { current: 1160, history: 1320 };
-const invitationTone: Record<GuestStatus, string> = {
-  pending: 'default',
-  sent: 'processing',
-  viewed: 'processing',
+const invitationTone: Record<GuestStatus, StatusTone> = {
+  pending: 'neutral',
+  sent: 'info',
+  viewed: 'info',
   rsvp: 'success',
 };
 type Props = Pick<
@@ -72,9 +73,9 @@ export function GuestListTable({ model }: { model: Props }) {
       title: '邀请 / 回执',
       width: 120,
       render: (_, g) => (
-        <Tag variant="filled" color={g.archivedAt ? 'default' : invitationTone[g.status]}>
+        <StatusTag tone={g.archivedAt ? 'inactive' : invitationTone[g.status]}>
           {g.archivedAt ? '已归档' : STATUS_LABEL[g.status]}
-        </Tag>
+        </StatusTag>
       ),
     },
     {

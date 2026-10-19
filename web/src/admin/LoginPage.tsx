@@ -1,30 +1,7 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Form, Input, Typography, message } from 'antd';
-import { api, ApiError } from '@/api/client';
-import { replaceSession } from '@/api/session';
-
+import { Button, Card, Form, Input, Typography } from 'antd';
+import { useLogin } from './session/useLogin';
 export function LoginPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
-
-  const from = (location.state as { from?: string } | null)?.from ?? '/admin';
-
-  const login = useMutation({
-    mutationFn: ({ username, password }: { username: string; password: string }) =>
-      api.login(username, password),
-    onSuccess: async (user) => {
-      await replaceSession(queryClient, user);
-      navigate(from, { replace: true });
-    },
-    onError: (err) => {
-      message.error(err instanceof ApiError ? err.message : '登录失败');
-    },
-    onSettled: () => setLoading(false),
-  });
+  const { loading, setLoading, login } = useLogin();
 
   return (
     <div
@@ -47,10 +24,18 @@ export function LoginPage() {
             login.mutate(values as { username: string; password: string });
           }}
         >
-          <Form.Item name="username" label="账号" rules={[{ required: true, message: '请输入账号' }]}>
+          <Form.Item
+            name="username"
+            label="账号"
+            rules={[{ required: true, message: '请输入账号' }]}
+          >
             <Input autoComplete="username" placeholder="admin / staff" />
           </Form.Item>
-          <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
+          <Form.Item
+            name="password"
+            label="密码"
+            rules={[{ required: true, message: '请输入密码' }]}
+          >
             <Input.Password autoComplete="current-password" />
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>

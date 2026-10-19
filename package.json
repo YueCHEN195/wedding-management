@@ -22,9 +22,10 @@
     "lint:fix": "node tooling/eslint/node_modules/eslint/bin/eslint.js . --fix",
     "format": "node tooling/eslint/node_modules/prettier/bin/prettier.cjs --write",
     "format:check": "node tooling/eslint/node_modules/prettier/bin/prettier.cjs --check",
-    "check": "pnpm lint && pnpm lint:pilot && pnpm lint:test && pnpm typecheck && pnpm test && pnpm build",
-    "lint:pilot": "node tooling/eslint/node_modules/eslint/bin/eslint.js web/src/admin/GuestsPage.tsx web/src/admin/guests --max-warnings 0",
-    "lint:test": "node --test tooling/eslint/config.test.mjs"
+    "check": "pnpm lint && pnpm lint:web && pnpm lint:test && pnpm typecheck && pnpm test && pnpm build",
+    "lint:pilot": "pnpm lint:web",
+    "lint:test": "node --test tooling/eslint/config.test.mjs",
+    "lint:web": "node tooling/eslint/node_modules/eslint/bin/eslint.js web/src --max-warnings 0"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",

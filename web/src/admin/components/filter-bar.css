@@ -1,0 +1,15 @@
+/* Layout only: each feature owns its filters, query timing and reset behavior. */
+.admin-filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.admin-filter-row .ant-input-search {
+  width: var(--filter-width);
+  max-width: 100%;
+}
+.admin-filter-row .ant-select {
+  width: var(--select-width);
+  max-width: 100%;
+}

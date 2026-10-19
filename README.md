@@ -66,9 +66,10 @@ pnpm dev
 | `pnpm typecheck` | 类型检查 |
 | `pnpm lint:setup` | 首次安装隔离的ESLint/Prettier依赖（不改变应用TS7） |
 | `pnpm lint` | 全项目ESLint检查，显示历史警告 |
-| `pnpm lint:pilot` | 宾客管理试点严格检查，禁止警告 |
+| `pnpm lint:web` | 全前端严格检查，禁止警告 |
+| `pnpm lint:pilot` | 兼容别名，执行`pnpm lint:web` |
 | `pnpm lint:test` | 验证分层与Hooks规则实际生效 |
-| `pnpm check` | ESLint、试点严格检查、规则测试、类型检查、测试、构建 |
+| `pnpm check` | ESLint、全前端严格检查、规则测试、类型检查、测试、构建 |
 | `pnpm format <文件或目录>` | 使用Prettier格式化指定范围 |
 | `pnpm format:check <文件或目录>` | 检查指定范围的格式 |
 | `pnpm db:generate` | 依据 schema 生成迁移 |

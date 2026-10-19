@@ -65,3 +65,60 @@ test('conditional Hooks and unhandled pilot Promises block lint', async () => {
     ),
   );
 });
+
+test('review views reject queries and submission Hooks reject unhandled Promises', async () => {
+  const view = await messages(
+    "import { useQuery } from '@tanstack/react-query'; export { useQuery };",
+    'web/src/admin/review/ReviewDrawer.view.tsx',
+  );
+  assert.ok(
+    view.some((message) => message.ruleId === 'no-restricted-imports' && message.severity === 2),
+  );
+  const submission = await messages(
+    'Promise.resolve(1);',
+    'web/src/admin/review/useReviewSubmission.ts',
+  );
+  assert.ok(
+    submission.some(
+      (message) =>
+        message.ruleId === '@typescript-eslint/no-floating-promises' && message.severity === 2,
+    ),
+  );
+});
+
+test('all feature views reject runtime API clients', async () => {
+  for (const filePath of [
+    'web/src/admin/gifts/GiftEditor.view.tsx',
+    'web/src/admin/rsvps/Rsvps.view.tsx',
+    'web/src/admin/checkins/Checkins.view.tsx',
+    'web/src/admin/records/RecordAction.view.tsx',
+    'web/src/admin/dashboard/Dashboard.view.tsx',
+    'web/src/invite/RsvpForm.view.tsx',
+    'web/src/checkin/Checkin.view.tsx',
+  ]) {
+    const result = await messages("import { api } from '@/api/client'; export { api };", filePath);
+    assert.ok(
+      result.some(
+        (message) => message.ruleId === 'no-restricted-imports' && message.severity === 2,
+      ),
+      filePath,
+    );
+  }
+});
+
+test('public and session feature Hooks share the strict Promise rules', async () => {
+  for (const filePath of [
+    'web/src/invite/useInvitation.ts',
+    'web/src/checkin/usePublicCheckin.ts',
+    'web/src/admin/session/useLogin.ts',
+  ]) {
+    const result = await messages('Promise.resolve(1);', filePath);
+    assert.ok(
+      result.some(
+        (message) =>
+          message.ruleId === '@typescript-eslint/no-floating-promises' && message.severity === 2,
+      ),
+      filePath,
+    );
+  }
+});

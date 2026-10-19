@@ -1,12 +1,9 @@
-import { useCallback, useRef } from 'react';
 import { Button, Layout, Menu, Tag, Typography } from 'antd';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/api/client';
+import { Outlet } from 'react-router-dom';
 import './tokens.css';
 import './admin.css';
 import { adminCssVariables } from './theme';
-import { replaceSession } from '@/api/session';
+import { useAdminNavigation } from './session/useAdminNavigation';
 
 const MENU = [
   { key: '/admin', label: '仪表盘' },
@@ -29,52 +26,53 @@ export interface AdminOutletContext {
   registerNavigationGuard: (guard: () => Promise<boolean>) => () => void;
 }
 export function AdminLayout() {
-  const navigationGuard = useRef<(() => Promise<boolean>) | null>(null);
-  const registerNavigationGuard = useCallback((guard: () => Promise<boolean>) => {
-    navigationGuard.current = guard;
-    return () => { if (navigationGuard.current === guard) navigationGuard.current = null; };
-  }, []);
-  const canNavigate = async () => !navigationGuard.current || await navigationGuard.current();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const queryClient = useQueryClient();
-  const { data: me } = useQuery({ queryKey: ['me'], queryFn: api.me });
-
+  const { registerNavigationGuard, location, me, openRoute, logout } = useAdminNavigation();
   const menu = me?.role === 'staff' ? STAFF_MENU : MENU;
 
   return (
     <Layout className="admin-shell" style={adminCssVariables}>
-      <Layout.Sider className="admin-sidebar" theme="dark" width={184} breakpoint="lg" collapsedWidth={0}>
-        <div className="admin-brand">婚礼管理<small>WEDDING WORKSPACE</small></div>
+      <Layout.Sider
+        className="admin-sidebar"
+        theme="dark"
+        width={184}
+        breakpoint="lg"
+        collapsedWidth={0}
+      >
+        <div className="admin-brand">
+          婚礼管理<small>WEDDING WORKSPACE</small>
+        </div>
         <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menu}
-          onClick={async ({ key }) => { if (key !== location.pathname && await canNavigate()) navigate(key); }}
+          onClick={({ key }) => {
+            void openRoute(key);
+          }}
         />
       </Layout.Sider>
       <Layout className="admin-main">
         <Layout.Header className="admin-header">
-          <Typography.Text type="secondary">婚礼管理 / {menu.find((item) => item.key === location.pathname)?.label ?? '工作台'}</Typography.Text>
+          <Typography.Text type="secondary">
+            婚礼管理 / {menu.find((item) => item.key === location.pathname)?.label ?? '工作台'}
+          </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Tag variant="filled">
-              {me?.role === 'admin' ? '管理员' : '工作人员'}
-            </Tag>
+            <Tag variant="filled">{me?.role === 'admin' ? '管理员' : '工作人员'}</Tag>
             <Typography.Text>{me?.username}</Typography.Text>
-            <Button type="text" size="small"
-              onClick={async () => {
-                if (!await canNavigate()) return;
-                await api.logout();
-                await replaceSession(queryClient, null);
-                navigate('/login', { replace: true });
+            <Button
+              type="text"
+              size="small"
+              onClick={() => {
+                void logout();
               }}
             >
               退出
             </Button>
           </div>
         </Layout.Header>
-        <Layout.Content className={`admin-content${location.pathname === '/admin/review' ? ' admin-content-workbench' : ''}`}>
+        <Layout.Content
+          className={`admin-content${location.pathname === '/admin/review' ? ' admin-content-workbench' : ''}`}
+        >
           <Outlet context={{ registerNavigationGuard } satisfies AdminOutletContext} />
         </Layout.Content>
       </Layout>

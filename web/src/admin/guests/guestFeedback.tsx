@@ -17,7 +17,7 @@ export const copyLink = async (g: GuestDTO) => {
 export function showImportReport(result: ImportResult) {
   if (!result.failed.length) return;
   Modal.warning({
-    className: 'admin-dialog',
+    className: 'admin-dialog guest-import-report',
     title: `已导入${result.created}位，${result.failed.length}行需处理`,
     okText: '返回名单',
     styles: { body: { maxHeight: 'var(--guest-media-max-height)', overflowY: 'auto' } },

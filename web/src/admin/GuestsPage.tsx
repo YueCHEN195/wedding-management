@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useCurrentUser } from '@/api/useCurrentUser';
 import { Alert, Button, Dropdown, Image, Modal, Space, Typography, Upload } from 'antd';
 import { DownloadOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons';
 import { api } from '@/api/client';
@@ -13,7 +13,7 @@ import { showImportReport } from './guests/guestFeedback';
 import './guests.css';
 
 export function GuestsPage() {
-  const me = useQuery({ queryKey: ['me'], queryFn: api.me });
+  const me = useCurrentUser();
   if (!me.data) return null;
   return me.data.role === 'staff' ? <StaffGuestsPage /> : <AdminGuestsPage />;
 }
@@ -134,7 +134,7 @@ function AdminGuestsPage() {
       <GuestListTable model={model} />
       <GuestEditorDrawer model={model} />
       <Modal
-        className="admin-dialog"
+        className="admin-dialog guest-media-dialog"
         open={media != null}
         title={`${media?.type === 'poster' ? '专属海报' : '专属二维码'} · ${media?.guest.name ?? ''}`}
         footer={null}

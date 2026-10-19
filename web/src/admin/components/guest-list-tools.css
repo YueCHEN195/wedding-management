@@ -1,0 +1,22 @@
+.guest-filter-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.guest-list-tools {
+  margin-bottom: var(--space-4);
+}
+.guest-list-tools .ant-tabs-nav {
+  margin-bottom: var(--space-3);
+}
+.guest-advanced-filters,
+.guest-filter-chips {
+  margin-top: var(--space-3);
+}
+.guest-filter-chips .ant-tag {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin: 0;
+}

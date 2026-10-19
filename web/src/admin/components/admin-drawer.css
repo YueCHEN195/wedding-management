@@ -1,0 +1,10 @@
+.admin-drawer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.admin-drawer-footer .ant-btn {
+  min-height: var(--touch-height);
+}

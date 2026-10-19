@@ -1,0 +1,28 @@
+.admin-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.admin-page-header h1 {
+  margin: 0;
+  font-size: var(--font-page);
+  font-weight: 650;
+}
+.admin-page-header p {
+  margin: var(--space-1) 0 0;
+  color: var(--admin-secondary);
+}
+.admin-page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+@media (max-width: 600px) {
+  .admin-page-header {
+    align-items: flex-start;
+  }
+}
