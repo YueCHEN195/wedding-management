@@ -16,6 +16,18 @@ export function useGiftsPage() {
     page: 1,
     pageSize: 10,
   });
+  const [searchDraft, setSearchDraft] = useState('');
+  const changeFilters = (patch: Partial<typeof params>) =>
+    setParams((current) => ({ ...current, ...patch, page: 1 }));
+  const search = (keyword: string) => changeFilters({ keyword: keyword.trim() || undefined });
+  const clearKeyword = () => {
+    setSearchDraft('');
+    changeFilters({ keyword: undefined });
+  };
+  const resetFilters = () => {
+    setSearchDraft('');
+    changeFilters({ keyword: undefined, method: undefined });
+  };
   const [action, setAction] = useState<RecordActionTarget | null>(null);
   const [historyId, setHistoryId] = useState<number | null>(null);
   const list = useQuery({ queryKey: ['gifts', params], queryFn: () => api.gifts.list(params) });
@@ -26,6 +38,12 @@ export function useGiftsPage() {
   return {
     params,
     setParams,
+    searchDraft,
+    setSearchDraft,
+    changeFilters,
+    search,
+    clearKeyword,
+    resetFilters,
     action,
     setAction,
     historyId,

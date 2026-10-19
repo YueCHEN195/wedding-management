@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Form, message } from 'antd';
-import { api, ApiError } from '@/api/client';
+import { api } from '@/api/client';
 import type { LifecycleEntity } from '@shared/types';
 import type { RecordActionTarget } from './types';
 import { adminFeedback } from '../theme';
@@ -46,8 +46,8 @@ export function useRecordAction(target: RecordActionTarget, onClose: () => void)
       });
       onClose();
     },
-    onError: (e) => {
-      message.error(e instanceof ApiError ? e.message : '操作失败，请重试');
+    onError: () => {
+      // The dialog keeps the failure and reason visible while refreshing the preview.
       void preview.refetch();
     },
   });

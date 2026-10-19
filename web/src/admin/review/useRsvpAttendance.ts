@@ -8,6 +8,7 @@ export function useRsvpAttendance(
   name: string,
   query: UseQueryResult<GuestCandidate[], Error>,
   enabled: boolean,
+  waitingForName = false,
 ) {
   const selection = Form.useWatch('guestId', form) as number | 'new' | undefined;
   const lastIdentity = useRef<string | null>(null);
@@ -16,7 +17,7 @@ export function useRsvpAttendance(
       lastIdentity.current = null;
       return;
     }
-    if (!query.isSuccess) return;
+    if (waitingForName || !query.isSuccess) return;
     const guest =
       typeof selection === 'number'
         ? query.data.find((g) => g.id === selection)
@@ -32,5 +33,5 @@ export function useRsvpAttendance(
       actualHeadcountInput: String(defaults.actualHeadcount),
       actualChildrenInput: String(defaults.actualChildrenCount),
     });
-  }, [enabled, form, name, query.isSuccess, query.data, selection]);
+  }, [enabled, form, name, query.isSuccess, query.data, selection, waitingForName]);
 }

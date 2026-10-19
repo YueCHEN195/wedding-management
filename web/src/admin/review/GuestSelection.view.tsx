@@ -2,9 +2,21 @@ import { Alert, Button, Form, Input, Select, Typography } from 'antd';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { GuestCandidate } from '@shared/types';
 import { ATTENDING_LABEL, SIDE_LABEL } from '@/lib/format';
-export function GuestSelection({ query }: { query: UseQueryResult<GuestCandidate[], Error> }) {
+export function GuestSelection({
+  query,
+  waitingForName = false,
+}: {
+  query: UseQueryResult<GuestCandidate[], Error>;
+  waitingForName?: boolean;
+}) {
   const form = Form.useFormInstance();
   const selection = Form.useWatch('guestId', form);
+  if (waitingForName)
+    return (
+      <Typography.Paragraph role="status" type="secondary">
+        等待姓名输入完成…
+      </Typography.Paragraph>
+    );
   if (query.isPending) return <Typography.Paragraph>正在核对宾客名单…</Typography.Paragraph>;
   if (query.isError)
     return (

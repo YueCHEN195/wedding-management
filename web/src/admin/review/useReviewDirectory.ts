@@ -4,6 +4,7 @@ import { Form, message } from 'antd';
 import type { GuestDTO, ReviewGuestRow, ReviewGuestStatus, Side } from '@shared/types';
 import { api } from '@/api/client';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { adminFeedback } from '../theme';
 export interface ReviewDirectoryProps {
   admin: boolean;
@@ -15,6 +16,8 @@ export interface ReviewDirectoryProps {
 export function useReviewDirectory(admin: boolean) {
   const qc = useQueryClient();
   const [keyword, setKeyword] = useState('');
+  const { pending: keywordDebouncing } = useDebouncedValue(keyword);
+  const searchPending = !!keyword && keywordDebouncing;
   const [status, setStatus] = useState<ReviewGuestStatus>();
   const [side, setSide] = useState<Side>();
   const [page, setPage] = useState(1);
@@ -26,6 +29,7 @@ export function useReviewDirectory(admin: boolean) {
   const query = useQuery({
     queryKey: ['review-directory', { keyword, status, side, page }],
     queryFn: () => api.guests.workbench({ keyword, status, side, page, pageSize: 10 }),
+    enabled: !searchPending,
     refetchInterval: 15000,
   });
   const detail = useQuery({
@@ -72,6 +76,7 @@ export function useReviewDirectory(admin: boolean) {
   };
   return {
     keyword,
+    searchPending,
     setKeyword,
     status,
     setStatus,

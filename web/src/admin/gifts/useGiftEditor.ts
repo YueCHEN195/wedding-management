@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Form, message } from 'antd';
+import { useOutletContext } from 'react-router-dom';
+import type { AdminOutletContext } from '../AdminLayout';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { api, ApiError } from '@/api/client';
 import type { GiftDTO, GiftMethod } from '@shared/types';
 import { parseGiftYuan } from '@shared/numericInput';
@@ -14,6 +18,9 @@ export interface GiftFormValues {
 }
 export function useGiftEditor() {
   const qc = useQueryClient();
+  const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
+  const [dirty, setDirty] = useState(false);
+  const [nameComposing, setNameComposing] = useState(false);
   const [editing, setEditing] = useState<GiftDTO | null>(null);
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm<GiftFormValues>();
@@ -50,12 +57,17 @@ export function useGiftEditor() {
     message.info('已保留你的修改并载入最新内容，请核对下方预览后重新保存');
   };
   const name = ((Form.useWatch('guestName', form) as string | undefined) ?? '').trim();
+  const { pending: nameDebouncing } = useDebouncedValue(
+    creating && !editing && !nameComposing ? name : '',
+  );
+  const namePending = nameComposing || nameDebouncing;
   const candidates = useQuery({
     queryKey: ['checkin-candidates', name],
     queryFn: () => api.checkins.candidates(name),
-    enabled: creating && !editing && !!name,
+    enabled: creating && !editing && !!name && !namePending,
     staleTime: 0,
   });
+  const candidateLookupPending = namePending || candidates.isPending || candidates.isFetching;
   useEffect(() => {
     form.setFieldValue('guestId', undefined);
   }, [name, form]);
@@ -98,6 +110,7 @@ export function useGiftEditor() {
     onSuccess: () => {
       message.success(editing ? '已更正，修改前后值与原因已留存' : '已登记，操作记录已保留');
       clearSaveState();
+      setDirty(false);
       setEditing(null);
       setCreating(false);
       for (const key of [
@@ -119,6 +132,9 @@ export function useGiftEditor() {
   });
 
   const openEdit = (gift: GiftDTO) => {
+    setNameComposing(false);
+    setDirty(false);
+    save.reset();
     clearSaveState();
     setEditing(gift);
     setCreating(true);
@@ -131,13 +147,23 @@ export function useGiftEditor() {
     });
   };
   const openCreate = () => {
+    setNameComposing(false);
+    setDirty(false);
+    save.reset();
     clearSaveState();
     setEditing(null);
     form.resetFields();
     setCreating(true);
   };
-  const close = () => {
-    if (save.isPending) return;
+  const canLeave = useUnsavedChanges({
+    dirty: creating && dirty,
+    busy: save.isPending,
+    content: '离开会丢弃本次礼金填写，确认离开吗？',
+  });
+  useEffect(() => registerNavigationGuard(canLeave), [registerNavigationGuard, canLeave]);
+  const close = async () => {
+    if (!(await canLeave())) return;
+    setDirty(false);
     setCreating(false);
     setEditing(null);
     clearSaveState();
@@ -146,13 +172,15 @@ export function useGiftEditor() {
     if (
       !save.isPending &&
       !conflict &&
-      (editing || !name || (!candidates.isFetching && !candidates.isError))
+      (editing || (!!name && !candidateLookupPending && candidates.isSuccess))
     )
       save.mutate(v);
   };
   return {
     editing,
     creating,
+    dirty,
+    setDirty,
     form,
     saveError,
     conflict,
@@ -160,6 +188,9 @@ export function useGiftEditor() {
     recheckDraft,
     name,
     candidates,
+    namePending,
+    candidateLookupPending,
+    setNameComposing,
     save,
     openEdit,
     openCreate,

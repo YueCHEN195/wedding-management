@@ -15,6 +15,7 @@ export function ReviewDirectoryView({
   const { admin, selectedId } = props;
   const {
     keyword,
+    searchPending,
     setKeyword,
     status,
     setStatus,
@@ -68,7 +69,11 @@ export function ReviewDirectoryView({
           重置
         </Button>
         <span className="review-connection">
-          {query.data ? `当前筛选 ${query.data.total} 条` : '正在读取名单'}
+          {searchPending
+            ? '等待搜索输入完成…'
+            : query.data
+              ? `当前筛选 ${query.data.total} 条`
+              : '正在读取名单'}
         </span>
       </div>
       {advanced && (
@@ -86,7 +91,7 @@ export function ReviewDirectoryView({
           />
         </div>
       )}
-      {query.isError && (
+      {!searchPending && query.isError && (
         <Alert
           type="error"
           showIcon
@@ -98,8 +103,8 @@ export function ReviewDirectoryView({
         rowKey="key"
         size="small"
         columns={columns}
-        dataSource={query.data?.items ?? []}
-        loading={query.isPending}
+        dataSource={searchPending ? [] : (query.data?.items ?? [])}
+        loading={searchPending || query.isPending}
         rowClassName={(r) =>
           r.pendingId != null && r.pendingId === selectedId ? 'review-selected-row' : ''
         }

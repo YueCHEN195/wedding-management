@@ -23,6 +23,8 @@ type Props = Pick<
   | 'noLongerPending'
   | 'submitError'
   | 'candidates'
+  | 'candidateNamePending'
+  | 'setNameComposing'
   | 'goToRecords'
   | 'setRecordAction'
   | 'setDirty'
@@ -40,6 +42,8 @@ export function ReviewDrawer({ model }: { model: Props }) {
     activeForm,
     noLongerPending,
     candidates,
+    candidateNamePending,
+    setNameComposing,
     setRecordAction,
     setDirty,
     submit,
@@ -95,10 +99,17 @@ export function ReviewDrawer({ model }: { model: Props }) {
                   { required: true, whitespace: true, max: 30, message: '请填写姓名（1–30字）' },
                 ]}
               >
-                <Input maxLength={30} placeholder="输入姓名查找宾客档案" />
+                <Input
+                  maxLength={30}
+                  placeholder="输入姓名查找宾客档案"
+                  onCompositionStart={() => setNameComposing(true)}
+                  onCompositionEnd={() => setNameComposing(false)}
+                />
               </Form.Item>
             )}
-            {(!manualOpen || !!manualName) && <GuestSelection query={candidates} />}
+            {(!manualOpen || !!manualName) && (
+              <GuestSelection query={candidates} waitingForName={candidateNamePending} />
+            )}
           </div>
           <div className="review-section">
             <h3>2 · 实际到场</h3>

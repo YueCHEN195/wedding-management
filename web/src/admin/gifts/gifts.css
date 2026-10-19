@@ -1,0 +1,160 @@
+/* Feature tokens: the accounting list keeps the same readable row rhythm as guest lists. */
+.gift-page {
+  --gift-row-height: 56px;
+  --gift-summary-min: 120px;
+}
+.gift-page,
+.gift-drawer {
+  --gift-weight-emphasis: 600;
+}
+.gift-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  padding-block: var(--space-5);
+  margin-bottom: var(--space-2);
+  border-bottom: var(--line-width) solid var(--admin-divider);
+}
+.gift-summary dl {
+  margin: 0;
+  min-width: var(--gift-summary-min);
+}
+.gift-summary dt,
+.gift-helper,
+.gift-list-meta,
+.gift-id {
+  color: var(--admin-secondary);
+  font-size: var(--font-secondary);
+}
+.gift-summary dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-heading);
+  font-weight: var(--gift-weight-emphasis);
+  font-variant-numeric: tabular-nums;
+}
+.gift-summary .gift-summary-total dd {
+  font-size: var(--font-page);
+}
+.gift-summary small {
+  font-size: var(--font-secondary);
+  font-weight: normal;
+}
+.gift-filters .ant-tabs-nav {
+  margin-bottom: var(--space-3);
+}
+.gift-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.gift-filter-chips .ant-tag {
+  margin: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.gift-list-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block: var(--space-4) var(--space-3);
+}
+.gift-page > .ant-alert {
+  margin-bottom: var(--space-4);
+}
+.gift-table .ant-table-cell {
+  white-space: nowrap;
+}
+.gift-table .ant-table-row {
+  height: var(--gift-row-height);
+}
+.gift-table .ant-btn-link {
+  padding-inline: 0;
+}
+.gift-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.gift-identity .admin-table-text {
+  min-width: 0;
+}
+.gift-id {
+  flex-shrink: 0;
+}
+.gift-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--gift-weight-emphasis);
+}
+.gift-amount-voided {
+  text-decoration: line-through;
+  color: var(--admin-secondary);
+}
+.gift-helper {
+  margin: var(--space-3) 0 0;
+  overflow-wrap: anywhere;
+}
+.gift-form-section {
+  margin-bottom: var(--space-6);
+}
+.gift-form-section h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-section);
+  font-weight: var(--gift-weight-emphasis);
+}
+.gift-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--space-4);
+}
+.gift-feedback {
+  margin-bottom: var(--space-4);
+}
+.gift-long-text,
+.gift-note-change {
+  overflow-wrap: anywhere;
+}
+.gift-candidate-option {
+  white-space: normal;
+}
+.gift-change-preview {
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--admin-processing);
+  border-radius: var(--radius-control);
+}
+.gift-change-preview dl {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: var(--space-3);
+  margin: 0;
+  padding-block: var(--space-1);
+}
+.gift-change-preview dt {
+  color: var(--admin-secondary);
+}
+.gift-change-preview dd {
+  margin: 0;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+/* Same existing narrow-form threshold as guest editing; controls retain their normal size. */
+@media (max-width: 600px) {
+  .gift-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gift-change-preview dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}
+
+.gift-feedback .ant-btn {
+  max-width: 100%;
+  min-height: var(--control-height);
+  height: auto;
+  white-space: normal;
+}

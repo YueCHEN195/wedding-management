@@ -1,4 +1,4 @@
-import { Alert, Form, Input, List, Modal, Typography } from 'antd';
+import { Alert, Button, Form, Input, List, Modal, Typography } from 'antd';
 import type { LifecycleAction, OperationLogDTO } from '@shared/types';
 import { formatDateTime, yuan } from '@/lib/format';
 import { ACTION_LABEL, type RecordActionTarget } from './types';
@@ -46,6 +46,7 @@ export function RecordActionView({
   return (
     <Modal
       open
+      className="admin-dialog"
       width={640}
       style={{ top: 24 }}
       styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' } }}
@@ -53,14 +54,41 @@ export function RecordActionView({
       onCancel={() => {
         if (!submit.isPending) onClose();
       }}
-      okText="确认操作"
+      okText={ACTION_LABEL[target.action]}
+      closable={!submit.isPending}
+      keyboard={!submit.isPending}
+      mask={{ closable: !submit.isPending }}
       onOk={() => form.submit()}
       confirmLoading={submit.isPending}
       okButtonProps={{ disabled: preview.isFetching || !preview.data || preview.isError }}
       cancelButtonProps={{ disabled: submit.isPending }}
     >
       {preview.isPending && <Typography.Paragraph>正在核对对象与关联数据…</Typography.Paragraph>}
-      {preview.isError && <Alert type="error" title={preview.error.message} showIcon />}
+      {preview.isError && (
+        <Alert
+          type="error"
+          title={preview.error.message}
+          showIcon
+          action={
+            <Button
+              onClick={() => {
+                void preview.refetch();
+              }}
+            >
+              重新核对
+            </Button>
+          }
+        />
+      )}
+      {submit.isError && (
+        <Alert
+          type="error"
+          showIcon
+          title="操作尚未保存"
+          description={`${submit.error.message}；原因已保留，请核对最新影响后重试。`}
+          style={{ marginBottom: 'var(--space-4)' }}
+        />
+      )}
       {preview.data && (
         <>
           <Typography.Title level={5}>

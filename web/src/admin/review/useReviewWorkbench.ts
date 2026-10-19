@@ -17,6 +17,7 @@ export function useReviewWorkbench() {
   const [manualOpen, setManualOpen] = useState(false);
   const [manualSubmissionKey, setManualSubmissionKey] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [nameComposing, setNameComposing] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [form] = Form.useForm<CheckinFormValues>();
   const [manualForm] = Form.useForm<CheckinFormValues>();
@@ -25,16 +26,28 @@ export function useReviewWorkbench() {
   const manualValues = Form.useWatch([], manualForm);
   const values = ((manualOpen ? manualValues : confirmValues) ?? {}) as CheckinFormValues;
   const manualName = ((Form.useWatch('guestName', manualForm) as string | undefined) ?? '').trim();
-  const { me, stats, pending, confirmCandidates, manualCandidates, invalidate } = useReviewQueries(
-    confirming,
-    manualOpen,
-    manualName,
-  );
+  const {
+    me,
+    stats,
+    pending,
+    confirmCandidates,
+    manualCandidates,
+    manualNamePending,
+    candidateNamePending,
+    candidateLookupPending,
+    invalidate,
+  } = useReviewQueries(confirming, manualOpen, manualName, nameComposing);
   useEffect(() => {
     manualForm.setFieldsValue({ guestId: undefined, newGuest: undefined });
   }, [manualName, manualForm]);
   useRsvpAttendance(form, confirming?.guestName ?? '', confirmCandidates, confirming != null);
-  useRsvpAttendance(manualForm, manualName, manualCandidates, manualOpen && !!manualName);
+  useRsvpAttendance(
+    manualForm,
+    manualName,
+    manualCandidates,
+    manualOpen && !!manualName,
+    manualNamePending,
+  );
 
   const { confirm, manual, saving } = useReviewSubmission({
     confirming,
@@ -60,6 +73,7 @@ export function useReviewWorkbench() {
   const switchDraft = async (next: () => void) => {
     if (!(await canLeave())) return;
     setDirty(false);
+    setNameComposing(false);
     setSubmitError(null);
     next();
   };
@@ -97,7 +111,7 @@ export function useReviewWorkbench() {
   const active = manualOpen || confirming != null;
   const blockSave = isReviewSaveBlocked({
     saving,
-    candidatesFetching: candidates.isFetching,
+    candidatesFetching: candidateLookupPending,
     candidatesError: candidates.isError,
     noLongerPending,
     guestArchived: !!confirming?.guestArchived,
@@ -135,6 +149,7 @@ export function useReviewWorkbench() {
     }
   };
   const submit = (input: CheckinFormValues) => {
+    if (blockSave) return;
     if (manualOpen) manual.mutate({ ...input, guestName: input.guestName! });
     else confirm.mutate(input);
   };
@@ -159,6 +174,8 @@ export function useReviewWorkbench() {
     items,
     noLongerPending,
     candidates,
+    candidateNamePending,
+    setNameComposing,
     active,
     blockSave,
     closeDrawer,

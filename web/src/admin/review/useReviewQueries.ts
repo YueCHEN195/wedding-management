@@ -2,10 +2,12 @@ import { useCurrentUser } from '@/api/useCurrentUser';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import type { CheckinDTO } from '@shared/types';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 export function useReviewQueries(
   confirming: CheckinDTO | null,
   manualOpen: boolean,
   manualName: string,
+  nameComposing: boolean,
 ) {
   const qc = useQueryClient();
   const me = useCurrentUser();
@@ -21,10 +23,14 @@ export function useReviewQueries(
     enabled: confirming != null,
     staleTime: 0,
   });
+  const { pending: manualNameDebouncing } = useDebouncedValue(
+    manualOpen && !nameComposing ? manualName : '',
+  );
+  const manualNamePending = nameComposing || manualNameDebouncing;
   const manualCandidates = useQuery({
     queryKey: ['checkin-candidates', manualName],
     queryFn: () => api.checkins.candidates(manualName),
-    enabled: manualOpen && manualName.length > 0,
+    enabled: manualOpen && manualName.length > 0 && !manualNamePending,
     staleTime: 0,
   });
   const pending = useQuery({
@@ -45,5 +51,19 @@ export function useReviewQueries(
     ])
       void qc.invalidateQueries({ queryKey: [key] });
   };
-  return { me, stats, pending, confirmCandidates, manualCandidates, invalidate };
+  const candidateNamePending = manualOpen && manualNamePending;
+  const candidateLookupPending = manualOpen
+    ? manualNamePending || manualCandidates.isPending || manualCandidates.isFetching
+    : confirmCandidates.isPending || confirmCandidates.isFetching;
+  return {
+    me,
+    stats,
+    pending,
+    confirmCandidates,
+    manualCandidates,
+    manualNamePending,
+    candidateNamePending,
+    candidateLookupPending,
+    invalidate,
+  };
 }
