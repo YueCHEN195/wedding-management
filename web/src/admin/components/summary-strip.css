@@ -1,0 +1,43 @@
+/* Shared summary layout only; each feature owns labels, values and the server's aggregation scope. */
+.admin-summary {
+  --summary-emphasis-weight: 600;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  padding-block: var(--space-3);
+  margin-bottom: var(--space-2);
+  border-bottom: var(--line-width) solid var(--admin-divider);
+}
+.admin-summary dl {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+.admin-summary dt {
+  color: var(--admin-secondary);
+  font-size: var(--font-secondary);
+}
+.admin-summary dd {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--font-heading);
+  font-weight: var(--summary-emphasis-weight);
+  font-variant-numeric: tabular-nums;
+}
+.admin-summary .admin-summary-main dd {
+  color: var(--admin-primary);
+}
+.admin-summary small {
+  font-size: var(--font-secondary);
+  font-weight: normal;
+}
+.admin-summary-note {
+  margin: 0;
+  color: var(--admin-secondary);
+  font-size: var(--font-caption);
+}

@@ -1,44 +1,16 @@
 /* Feature tokens: the accounting list keeps the same readable row rhythm as guest lists. */
 .gift-page {
   --gift-row-height: 56px;
-  --gift-summary-min: 120px;
 }
 .gift-page,
 .gift-drawer {
   --gift-weight-emphasis: 600;
 }
-.gift-summary {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--space-4) var(--space-6);
-  padding-block: var(--space-5);
-  margin-bottom: var(--space-2);
-  border-bottom: var(--line-width) solid var(--admin-divider);
-}
-.gift-summary dl {
-  margin: 0;
-  min-width: var(--gift-summary-min);
-}
-.gift-summary dt,
 .gift-helper,
 .gift-list-meta,
 .gift-id {
   color: var(--admin-secondary);
   font-size: var(--font-secondary);
-}
-.gift-summary dd {
-  margin: var(--space-1) 0 0;
-  font-size: var(--font-heading);
-  font-weight: var(--gift-weight-emphasis);
-  font-variant-numeric: tabular-nums;
-}
-.gift-summary .gift-summary-total dd {
-  font-size: var(--font-page);
-}
-.gift-summary small {
-  font-size: var(--font-secondary);
-  font-weight: normal;
 }
 .gift-filters .ant-tabs-nav {
   margin-bottom: var(--space-3);

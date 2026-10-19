@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { Button, Layout, Menu, Tag, Typography } from 'antd';
 import { Outlet } from 'react-router-dom';
 import './tokens.css';
@@ -27,12 +29,21 @@ export interface AdminOutletContext {
 }
 export function AdminLayout() {
   const { registerNavigationGuard, location, me, openRoute, logout } = useAdminNavigation();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [compactNavigation, setCompactNavigation] = useState(false);
   const menu = me?.role === 'staff' ? STAFF_MENU : MENU;
 
   return (
     <Layout className="admin-shell" style={adminCssVariables}>
       <Layout.Sider
         className="admin-sidebar"
+        id="admin-navigation"
+        aria-label="后台导航"
+        inert={sidebarCollapsed}
+        collapsed={sidebarCollapsed}
+        onCollapse={setSidebarCollapsed}
+        onBreakpoint={setCompactNavigation}
+        trigger={null}
         theme="dark"
         width={184}
         breakpoint="lg"
@@ -53,9 +64,28 @@ export function AdminLayout() {
       </Layout.Sider>
       <Layout className="admin-main">
         <Layout.Header className="admin-header">
-          <Typography.Text type="secondary">
-            婚礼管理 / {menu.find((item) => item.key === location.pathname)?.label ?? '工作台'}
-          </Typography.Text>
+          <div className="admin-header-location">
+            {compactNavigation && (
+              <Button
+                type="text"
+                className="admin-nav-toggle"
+                icon={
+                  sidebarCollapsed ? (
+                    <MenuUnfoldOutlined aria-hidden />
+                  ) : (
+                    <MenuFoldOutlined aria-hidden />
+                  )
+                }
+                aria-label={sidebarCollapsed ? '展开导航' : '收起导航'}
+                aria-expanded={!sidebarCollapsed}
+                aria-controls="admin-navigation"
+                onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+              />
+            )}
+            <Typography.Text type="secondary">
+              婚礼管理 / {menu.find((item) => item.key === location.pathname)?.label ?? '工作台'}
+            </Typography.Text>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Tag variant="filled">{me?.role === 'admin' ? '管理员' : '工作人员'}</Tag>
             <Typography.Text>{me?.username}</Typography.Text>

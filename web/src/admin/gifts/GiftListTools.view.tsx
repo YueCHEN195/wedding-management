@@ -2,6 +2,7 @@ import { Input, Select, Tabs, Button, Tag } from 'antd';
 import { METHOD_LABEL, yuan } from '@/lib/format';
 import type { GiftsModel } from './useGiftsPage';
 import '../components/filter-bar.css';
+import '../components/summary-strip.css';
 
 export function GiftFilters({ model }: { model: GiftsModel }) {
   const { params, changeFilters, searchDraft, setSearchDraft, search, clearKeyword, resetFilters } =
@@ -68,11 +69,11 @@ export function GiftSummary({ model: { list } }: { model: GiftsModel }) {
   const summary = list.data?.summary;
   return (
     <section
-      className="gift-summary"
+      className="admin-summary gift-summary"
       aria-label="当前筛选内的有效礼金汇总"
       aria-busy={list.isFetching}
     >
-      <dl className="gift-summary-total">
+      <dl className="admin-summary-main gift-summary-total">
         <dt>有效礼金 · 当前筛选</dt>
         <dd>
           {summary

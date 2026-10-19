@@ -1,0 +1,62 @@
+/* RSVP-only list geometry; summary, filter and drawer shells remain shared. */
+.rsvp-page {
+  --rsvp-row-height: 56px;
+}
+.rsvp-filters {
+  margin-bottom: var(--space-1);
+}
+.rsvp-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.rsvp-filter-chips .ant-tag {
+  margin: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.rsvp-helper,
+.rsvp-list-meta,
+.rsvp-id {
+  color: var(--admin-secondary);
+  font-size: var(--font-secondary);
+}
+.rsvp-helper {
+  margin: var(--space-3) 0 0;
+  overflow-wrap: anywhere;
+}
+.rsvp-list-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block: var(--space-4) var(--space-3);
+}
+.rsvp-page > .ant-alert,
+.rsvp-feedback,
+.rsvp-record-context {
+  margin-bottom: var(--space-4);
+}
+.rsvp-table .ant-table-cell {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.rsvp-table .ant-table-row {
+  height: var(--rsvp-row-height);
+}
+.rsvp-table .ant-btn-link {
+  padding-inline: 0;
+}
+.rsvp-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.rsvp-identity .admin-table-text {
+  min-width: 0;
+}
+.rsvp-id {
+  flex-shrink: 0;
+}

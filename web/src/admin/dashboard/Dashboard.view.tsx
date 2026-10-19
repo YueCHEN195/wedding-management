@@ -1,9 +1,10 @@
-import { Alert, Card, Col, Row, Statistic, Typography } from 'antd';
+import { Alert, Button, Card, Col, Row, Typography } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { yuan } from '@/lib/format';
 import { wedding } from '@shared/wedding';
 
 import type { DashboardModel } from './useDashboard';
+import '../components/summary-strip.css';
 export function DashboardView({ model: { summary, charts, s } }: { model: DashboardModel }) {
   return (
     <div>
@@ -32,43 +33,45 @@ export function DashboardView({ model: { summary, charts, s } }: { model: Dashbo
 }
 
 function DashboardSummary({ summary, s }: Pick<DashboardModel, 'summary' | 's'>) {
+  const items = [
+    { label: '宾客总数', value: s?.guestTotal, unit: '组' },
+    { label: '预计出席（回执）', value: s?.attendingHeadcount, unit: '人' },
+    { label: '已核对到场', value: s?.actualHeadcount, unit: '人' },
+    { label: '礼金总额', value: s?.giftTotal == null ? undefined : `¥${yuan(s.giftTotal)}` },
+    { label: '待审核', value: s?.pendingCheckinCount, unit: '条' },
+    { label: '已回执', value: s?.rsvpCount, unit: '份' },
+    { label: '礼金笔数', value: s?.giftCount, unit: '笔' },
+    { label: '已邀请', value: s?.invitedCount, unit: '组' },
+    { label: '已签到', value: s?.checkinCount, unit: '组' },
+    { label: '其中到场儿童', value: s?.actualChildrenCount, unit: '人' },
+  ];
   return (
-    <Row gutter={[16, 16]}>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic title="宾客总数" value={s?.guestTotal ?? 0} loading={summary.isLoading} />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic
-            title="预计出席人数（回执）"
-            value={s?.attendingHeadcount ?? 0}
-            loading={summary.isLoading}
-          />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic
-            title="已到场人数（已核对）"
-            value={s?.actualHeadcount ?? 0}
-            loading={summary.isLoading}
-          />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic
-            title="礼金总额"
-            prefix="¥"
-            value={yuan(s?.giftTotal ?? 0)}
-            loading={summary.isLoading}
-          />
-        </Card>
-      </Col>
-      <DashboardActivitySummary summary={summary} s={s} />
-    </Row>
+    <section className="admin-summary" aria-label="婚礼数据汇总" aria-busy={summary.isFetching}>
+      {items.map((item) => (
+        <dl key={item.label}>
+          <dt>{item.label}</dt>
+          <dd>
+            {item.value ?? (summary.isPending ? '—' : '未记录')}
+            {item.value != null && item.unit && <small>{item.unit}</small>}
+          </dd>
+        </dl>
+      ))}
+      {summary.isError && (
+        <Alert
+          type="warning"
+          title={s ? '汇总更新失败，当前显示上次数据' : '汇总读取失败'}
+          action={
+            <Button
+              onClick={() => {
+                void summary.refetch();
+              }}
+            >
+              重试
+            </Button>
+          }
+        />
+      )}
+    </section>
   );
 }
 function DashboardCharts({ charts }: Pick<DashboardModel, 'charts'>) {
@@ -142,51 +145,5 @@ function DashboardCharts({ charts }: Pick<DashboardModel, 'charts'>) {
         </Card>
       </Col>
     </Row>
-  );
-}
-
-function DashboardActivitySummary({ summary, s }: Pick<DashboardModel, 'summary' | 's'>) {
-  return (
-    <>
-      {' '}
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic
-            title="待审核"
-            value={s?.pendingCheckinCount ?? 0}
-            loading={summary.isLoading}
-          />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic title="已回执" value={s?.rsvpCount ?? 0} loading={summary.isLoading} />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic title="礼金笔数" value={s?.giftCount ?? 0} loading={summary.isLoading} />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic title="已邀请" value={s?.invitedCount ?? 0} loading={summary.isLoading} />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic title="已签到组数" value={s?.checkinCount ?? 0} loading={summary.isLoading} />
-        </Card>
-      </Col>
-      <Col xs={12} md={6}>
-        <Card>
-          <Statistic
-            title="到场儿童（包含在总人数内）"
-            value={s?.actualChildrenCount ?? 0}
-            loading={summary.isLoading}
-          />
-        </Card>
-      </Col>
-    </>
   );
 }

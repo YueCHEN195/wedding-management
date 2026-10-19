@@ -1,5 +1,6 @@
 import { Alert, Button } from 'antd';
 import type { ReviewWorkbenchModel } from './useReviewWorkbench';
+import '../components/summary-strip.css';
 export function ReviewSummary({
   model: { me, stats, pending },
 }: {
@@ -7,9 +8,8 @@ export function ReviewSummary({
 }) {
   return (
     <>
-      {' '}
       {me.data?.role === 'admin' && (
-        <div className="review-summary" aria-label="婚礼现场概览">
+        <section className="admin-summary review-summary" aria-label="婚礼现场概览">
           {stats.isError ? (
             <Alert
               type="warning"
@@ -26,36 +26,38 @@ export function ReviewSummary({
             />
           ) : (
             <>
-              <div>
-                <span>当前宾客档案</span>
-                <strong>
+              <dl>
+                <dt>当前宾客档案</dt>
+                <dd>
                   {stats.data?.guestTotal ?? '—'} <small>组</small>
-                </strong>
-              </div>
-              <div>
-                <span>预计出席（回执）</span>
-                <strong>
+                </dd>
+              </dl>
+              <dl>
+                <dt>预计出席（回执）</dt>
+                <dd>
                   {stats.data?.attendingHeadcount ?? '—'} <small>人</small>
-                </strong>
-              </div>
-              <div>
-                <span>已核对到场</span>
-                <strong>
+                </dd>
+              </dl>
+              <dl>
+                <dt>已核对到场</dt>
+                <dd>
                   {stats.data?.actualHeadcount ?? '—'} <small>人</small>
-                </strong>
-                {!!stats.data?.unknownHeadcountGroups && (
-                  <small>另有{stats.data.unknownHeadcountGroups}组人数待补记</small>
-                )}
-              </div>
-              <div>
-                <span>待处理提交</span>
-                <strong>
+                </dd>
+              </dl>
+              <dl>
+                <dt>待处理提交</dt>
+                <dd>
                   {pending.data?.length ?? '—'} <small>条</small>
-                </strong>
-              </div>
+                </dd>
+              </dl>
+              {!!stats.data?.unknownHeadcountGroups && (
+                <p className="admin-summary-note">
+                  另有{stats.data.unknownHeadcountGroups}组人数待补记
+                </p>
+              )}
             </>
           )}
-        </div>
+        </section>
       )}
     </>
   );
