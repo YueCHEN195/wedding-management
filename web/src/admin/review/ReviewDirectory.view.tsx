@@ -213,6 +213,7 @@ function reviewDirectoryColumns(
       : []),
     {
       title: '操作',
+      align: 'right',
       width: 100,
       fixed: 'right',
       render: (_, r) => (

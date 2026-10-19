@@ -76,6 +76,7 @@ export function RsvpTable({ model }: { model: RsvpsModel }) {
     { title: '提交时间', dataIndex: 'submittedAt', width: 160, render: formatDateTime },
     {
       title: '操作',
+      align: 'right',
       width: 90,
       fixed: 'right',
       render: (_, r) => (

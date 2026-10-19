@@ -1,0 +1,311 @@
+/* This page intentionally has a more expressive stage; tokens do not escape its container. */
+.dashboard-page {
+  --dash-hero-number: 56px;
+  --dash-money-number: 36px;
+  --dash-emphasis-weight: 650;
+  --dash-hero-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  --dash-arrival-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  --dash-charts-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  --dash-panel-height: 320px;
+  --dash-ring-height: 204px;
+  --dash-group-height: 236px;
+  --dash-bar-height: 8px;
+  --dash-group-bar-height: 4px;
+  --dash-dot-size: 8px;
+  --dash-orbit-size: 360px;
+  --dash-orbit-inset: -180px;
+  --dash-orbit-shadow: 0 0 0 36px rgb(250 247 243 / 3%), 0 0 0 72px rgb(250 247 243 / 2%);
+  --dash-orbit-border: rgb(250 247 243 / 10%);
+  --dash-stage-text: #fff4e8;
+  --dash-stage-secondary: #c5d5cf;
+  --dash-stage-line: #536b65;
+  --dash-money-surface: #f1e4d7;
+  --dash-bar-track: #ede7df;
+  --dash-enter-duration: 640ms;
+  --dash-bar-duration: 800ms;
+  --dash-hover-duration: 180ms;
+  --dash-stagger: 80ms;
+  --dash-enter-offset: 12px;
+  --dash-hover-offset: -2px;
+  --dash-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --dash-sheen-width: 24%;
+  --dash-sheen-duration: 1100ms;
+  --dash-sheen-color: rgb(255 244 232 / 5%);
+  --dash-sheen-start: -220%;
+  --dash-sheen-end: 520%;
+  --dash-sheen-angle: -20deg;
+  min-width: 0;
+}
+.dashboard-update,
+.dashboard-chart-note,
+.dashboard-chart-panel header p,
+.dashboard-wedding,
+.dashboard-ring-center span {
+  color: var(--admin-secondary);
+  font-size: var(--font-caption);
+}
+.dashboard-update {
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-feedback {
+  margin-bottom: var(--space-4);
+}
+.dashboard-stage {
+  display: grid;
+  grid-template-columns: var(--dash-hero-columns);
+  gap: var(--space-4);
+  animation: dashboard-enter var(--dash-enter-duration) var(--dash-easing) both;
+}
+.dashboard-arrival {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: var(--space-6);
+  border-radius: var(--radius-panel);
+  background: var(--admin-copper);
+  color: var(--dash-stage-text);
+}
+.dashboard-arrival::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: var(--dash-orbit-size);
+  height: var(--dash-orbit-size);
+  right: var(--dash-orbit-inset);
+  bottom: var(--dash-orbit-inset);
+  border: var(--line-width) solid var(--dash-orbit-border);
+  border-radius: 50%;
+  box-shadow: var(--dash-orbit-shadow);
+  pointer-events: none;
+}
+.dashboard-arrival::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--dash-sheen-width);
+  background: var(--dash-sheen-color);
+  transform: translateX(var(--dash-sheen-end)) skewX(var(--dash-sheen-angle));
+  animation: dashboard-sheen var(--dash-sheen-duration) var(--dash-easing) both;
+  pointer-events: none;
+  z-index: -1;
+}
+.dashboard-stage-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+.dashboard-eyebrow {
+  display: block;
+  font-size: var(--font-caption);
+}
+.dashboard-stage-heading .dashboard-eyebrow {
+  color: var(--admin-coral);
+}
+.dashboard-stage-heading a {
+  color: var(--dash-stage-text);
+  font-size: var(--font-secondary);
+}
+.dashboard-arrival-grid {
+  display: grid;
+  grid-template-columns: var(--dash-arrival-columns);
+  gap: var(--space-6);
+  margin-top: var(--space-5);
+  align-items: end;
+}
+.dashboard-main-number h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-body);
+  font-weight: normal;
+}
+.dashboard-number {
+  font-size: var(--dash-hero-number);
+  line-height: 1;
+  font-weight: var(--dash-emphasis-weight);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: calc(-1 * var(--line-width));
+  overflow-wrap: anywhere;
+}
+.dashboard-number small {
+  font-size: var(--font-body);
+  margin-left: var(--space-2);
+  font-weight: normal;
+  letter-spacing: normal;
+}
+.dashboard-main-number p {
+  margin: var(--space-3) 0 0;
+  color: var(--dash-stage-secondary);
+  font-size: var(--font-caption);
+}
+.dashboard-arrival-details {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.dashboard-arrival-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+.dashboard-arrival-details dt {
+  color: var(--dash-stage-secondary);
+  font-size: var(--font-secondary);
+}
+.dashboard-arrival-details dd {
+  margin: 0;
+  font-size: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dashboard-arrival-details small {
+  font-size: var(--font-caption);
+  margin-left: var(--space-1);
+}
+.dashboard-gift {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--dash-money-surface);
+  border-radius: var(--radius-panel);
+  min-width: 0;
+}
+.dashboard-gift .dashboard-eyebrow {
+  color: var(--admin-primary);
+}
+.dashboard-gift-value {
+  margin-top: var(--space-4);
+  font-size: var(--dash-money-number);
+  line-height: 1;
+  font-weight: var(--dash-emphasis-weight);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: calc(-1 * var(--line-width));
+  overflow-wrap: anywhere;
+}
+.dashboard-gift > p {
+  margin: var(--space-3) 0 var(--space-4);
+  color: var(--admin-secondary);
+  font-size: var(--font-secondary);
+}
+.dashboard-gift-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-caption);
+}
+.dashboard-summary-link {
+  margin-left: auto;
+  font-size: var(--font-secondary);
+}
+.dashboard-wedding {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  align-items: center;
+  margin-top: var(--space-5);
+  padding-block: var(--space-3);
+}
+.dashboard-wedding > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.dashboard-wedding strong {
+  color: var(--admin-text);
+  font-size: var(--font-body);
+  font-weight: var(--dash-emphasis-weight);
+}
+.dashboard-wedding strong span {
+  color: var(--admin-primary);
+}
+.dashboard-wedding p {
+  margin: 0;
+}
+.dashboard-arrival :focus-visible {
+  outline-color: var(--admin-coral);
+}
+@media (hover: hover) {
+  .dashboard-chart-panel:hover {
+    transform: translateY(var(--dash-hover-offset));
+    border-color: var(--admin-coral);
+  }
+}
+/* Existing admin breakpoints; CSS custom properties cannot drive media conditions. */
+@media (max-width: 1199px) {
+  .dashboard-page {
+    --dash-hero-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    --dash-charts-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashboard-chart-panel:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 767px) {
+  .dashboard-page {
+    --dash-hero-columns: minmax(0, 1fr);
+    --dash-charts-columns: minmax(0, 1fr);
+    --dash-hero-number: 48px;
+    --dash-money-number: 32px;
+  }
+  .dashboard-summary-link {
+    margin-left: 0;
+  }
+  .dashboard-chart-panel:last-child {
+    grid-column: auto;
+  }
+}
+@media (max-width: 479px) {
+  .dashboard-arrival-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-arrival-details {
+    padding-top: var(--space-4);
+    border-top: var(--line-width) solid var(--dash-stage-line);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-stage,
+  .dashboard-chart-panel,
+  .dashboard-bar,
+  .dashboard-arrival::after {
+    animation: none;
+    transition: none;
+  }
+  .dashboard-arrival::after {
+    display: none;
+  }
+  .dashboard-chart-panel:hover {
+    transform: none;
+  }
+}
+@keyframes dashboard-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--dash-enter-offset));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dashboard-bar-enter {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes dashboard-sheen {
+  from {
+    transform: translateX(var(--dash-sheen-start)) skewX(var(--dash-sheen-angle));
+  }
+  to {
+    transform: translateX(var(--dash-sheen-end)) skewX(var(--dash-sheen-angle));
+  }
+}

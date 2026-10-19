@@ -94,6 +94,7 @@ export function GuestListTable({ model }: { model: Props }) {
     },
     {
       title: '操作',
+      align: 'right',
       width: 144,
       fixed: 'right',
       render: (_, g) => (

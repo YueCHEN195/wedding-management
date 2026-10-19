@@ -103,6 +103,7 @@ function giftColumns(model: GiftsModel): ColumnsType<GiftDTO> {
       ? [
           {
             title: '操作',
+            align: 'right' as const,
             width: 150,
             fixed: 'right' as const,
             render: (_: unknown, r: GiftDTO) => (

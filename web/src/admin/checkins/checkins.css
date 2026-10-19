@@ -1,0 +1,66 @@
+/* List density belongs to this feature; drawer, filter and text primitives remain shared. */
+.checkin-page {
+  --checkin-row-height: 56px;
+}
+.checkin-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.checkin-filter-chips .ant-tag {
+  margin: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.checkin-helper,
+.checkin-editor-helper,
+.checkin-list-meta,
+.checkin-id {
+  color: var(--admin-secondary);
+  font-size: var(--font-secondary);
+}
+.checkin-helper {
+  margin: var(--space-3) 0 0;
+}
+.checkin-editor-helper {
+  margin: 0 0 var(--space-4);
+}
+.checkin-list-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block: var(--space-4) var(--space-3);
+}
+.checkin-page > .ant-alert,
+.checkin-record-context,
+.checkin-feedback {
+  margin-bottom: var(--space-4);
+}
+.checkin-table .ant-table-cell {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.checkin-table .ant-table-row {
+  height: var(--checkin-row-height);
+}
+.checkin-table .ant-btn-link {
+  padding-inline: 0;
+}
+.checkin-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.checkin-identity .admin-table-text {
+  min-width: 0;
+}
+.checkin-id {
+  flex-shrink: 0;
+}
+.checkin-gift-voided {
+  text-decoration: line-through;
+  color: var(--admin-secondary);
+}

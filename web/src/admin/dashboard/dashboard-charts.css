@@ -1,0 +1,180 @@
+/* Page-scoped chart layout and readable, keyboard-accessible data lists. */
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: var(--dash-charts-columns);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+.dashboard-chart-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5);
+  border: var(--line-width) solid var(--admin-divider);
+  border-radius: var(--radius-panel);
+  background: var(--dash-chart-surface);
+  animation: dashboard-enter var(--dash-enter-duration) var(--dash-easing) both;
+  animation-delay: var(--dash-stagger);
+  transition:
+    border-color var(--dash-hover-duration),
+    transform var(--dash-hover-duration);
+}
+.dashboard-chart-panel:nth-child(2) {
+  animation-delay: calc(var(--dash-stagger) * 2);
+}
+.dashboard-chart-panel:nth-child(3) {
+  animation-delay: calc(var(--dash-stagger) * 3);
+}
+.dashboard-chart-panel h2 {
+  margin: 0;
+  font-size: var(--font-section);
+  font-weight: var(--dash-emphasis-weight);
+}
+.dashboard-chart-panel header p {
+  margin: var(--space-1) 0 0;
+}
+.dashboard-chart-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: var(--dash-panel-height);
+}
+.dashboard-chart-panel footer {
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: var(--line-width) solid var(--admin-divider);
+  text-align: right;
+  font-size: var(--font-secondary);
+}
+.dashboard-chart-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: center;
+  min-height: var(--dash-panel-height);
+  color: var(--admin-secondary);
+}
+.dashboard-ring-wrap {
+  position: relative;
+}
+.dashboard-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-1);
+  pointer-events: none;
+}
+.dashboard-ring-center strong {
+  font-size: var(--font-section);
+  font-weight: var(--dash-emphasis-weight);
+}
+.dashboard-ring-legend {
+  margin: var(--space-4) 0 0;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.dashboard-ring-legend > div {
+  min-width: 0;
+}
+.dashboard-ring-legend dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--admin-secondary);
+  font-size: var(--font-caption);
+}
+.dashboard-ring-legend dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-ring-legend small,
+.dashboard-bar-heading small {
+  margin-left: var(--space-1);
+  font-size: var(--font-caption);
+  font-weight: normal;
+}
+.dashboard-dot {
+  display: inline-block;
+  width: var(--dash-dot-size);
+  height: var(--dash-dot-size);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dashboard-methods {
+  display: grid;
+  gap: var(--space-6);
+}
+.dashboard-bar-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.dashboard-bar-heading strong {
+  flex-shrink: 0;
+  font-size: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--dash-emphasis-weight);
+}
+.dashboard-bar-track {
+  height: var(--dash-bar-height);
+  background: var(--dash-bar-track);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.dashboard-bar {
+  display: block;
+  height: 100%;
+  width: var(--bar-share);
+  background: var(--bar-color);
+  border-radius: inherit;
+  transform-origin: left;
+  animation: dashboard-bar-enter var(--dash-bar-duration) var(--dash-easing) both;
+}
+.dashboard-chart-note {
+  display: block;
+  margin-top: var(--space-1);
+}
+.dashboard-groups {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  max-height: var(--dash-group-height);
+  overflow: auto;
+  padding-right: var(--space-2);
+}
+.dashboard-group {
+  min-width: 0;
+}
+.dashboard-group .admin-table-text {
+  min-width: 0;
+}
+.dashboard-group .dashboard-bar-track {
+  height: var(--dash-group-bar-height);
+}
+.dashboard-side-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+  font-size: var(--font-caption);
+}
+.dashboard-side-legend > div {
+  display: flex;
+  gap: var(--space-1);
+}
+.dashboard-side-legend dt {
+  color: var(--admin-secondary);
+}
+.dashboard-side-legend dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}

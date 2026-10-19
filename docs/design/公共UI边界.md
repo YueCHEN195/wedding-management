@@ -27,6 +27,8 @@
 | `StatusTag` | 静态状态的低饱和语义色和图标；调用方传文字与 `neutral/inactive/pending/info/success/error` 语义，不传颜色 |
 | 原生 Modal / Form / Table / Tabs | 优先继承 `theme.ts`，不为套样式新增同名包装或万能业务组件 |
 
+所有表格的操作列统一使用 Ant Design 原生 `align: 'right'`，表头与行内按钮组均右对齐；列固定位置与操作顺序仍由功能视图决定。不用全局 last-child 选择器猜测操作列，也不为对齐增加表格包装组件。
+
 `StatusTag` 不推导业务状态、汇总或权限。未审核与已驳回分别表达等待和错误，已撤销、已作废使用失效语义；每个标签有文字，图标不重复朗读。筛选条件继续使用可关闭的原生 Tag，支付方式、角色等分类不套用成功/失败状态。
 
 编辑草稿、失败保留、未保存保护、版本冲突和保存后的缓存刷新仍属于功能 Hook。公共 Drawer 不能自行拦截所有关闭、强制保存或增加确认步骤；长表单通过原生 Footer 和 Form 关联提交。
@@ -48,6 +50,7 @@
 - `review.css`：26:74 桌面 Grid、窄屏模块分配和队列色块只作用于 `.review-workbench`；保存摘要色块只作用于 `.review-drawer`。核对抽屉复用公共宽度，详情抽屉复用较窄的 480px 宽度，均不超过视口。
 - 各功能继续定义业务列宽、字段组合、轮询策略、搜索生效时机、筛选重置与保留方式；不能通过视觉收口暗改这些交互。
 - 普通页面使用 Content 滚动。现场审核继续一屏工作台、模块内部滚动；编辑在右侧抽屉，不恢复常驻表单。
+- `dashboard.css` / `dashboard-charts.css`：仅仪表盘使用铜青现场概览、有效礼金分区及图表动效；数值尺寸、几何和动画 token 限定在 `.dashboard-page`。`dashboardTokens.ts` 复用品牌/语义色，保留环图专用几何；不把展示页动效推广到业务表单。图表读取与手动刷新仍属于 useDashboard。
 
 新增公共组件前先找第二个稳定场景。暂不建立 `DataTable`、万能 `FilterBar`、`ModalForm` 或 `DrawerForm`；仅外观相似不构成统一业务 API 的理由。
 
@@ -55,7 +58,7 @@
 
 2026-10-19：已拆开公共样式与宾客页的加载依赖，限定页面 token 范围，审核名单详情接入 AdminDrawer；宾客、审核、礼金和签到列表的主要状态接入 StatusTag，后台静态 toast 默认时长统一。这次公共模式收口时，礼金与签到记录的完整页面尚待迁移。礼金页的后续实施见《深侧栏珊瑚设计规范》第六轮。
 
-礼金与回执页已分别在第六、七轮复用上述模式。只将稳定重复的汇总排列收口为共用 CSS，没有增加表单或筛选框架。窄屏导航入口由 AdminLayout 放入 Header，使用原生 Button 和原 Sider，折叠导航设为 inert，避免标题遮挡和隐藏菜单被键盘聚焦。下一项为签到记录页 UI / UX，之后是统计和导出。
+礼金与回执页已分别在第六、七轮复用上述模式。只将稳定重复的汇总排列收口为共用 CSS，没有增加表单或筛选框架。窄屏导航入口由 AdminLayout 放入 Header，使用原生 Button 和原 Sider，折叠导航设为 inert，避免标题遮挡和隐藏菜单被键盘聚焦。签到记录页现已复用 PageHeader、filter-bar、TableText、StatusTag、AdminDrawer、AttendanceFields、useUnsavedChanges 与 RecordAction/RecordHistory。其列宽、56px 行高、人数原值对照及冲突提示保留在 checkins 功能目录；没有新造基础表格、人数解析器或历史接口。仪表盘已按明确授权重构，仍复用 PageHeader、summary-strip 和 TableText；环图、数据条及分区是页面特有视图。下一项为导出页。
 
 ## 本轮验证
 
