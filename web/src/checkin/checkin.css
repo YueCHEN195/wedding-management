@@ -1,0 +1,277 @@
+.guest-checkin {
+  /* Check-in layout geometry is local, not a new application-wide standard. */
+  --checkin-sheet-width: 420px;
+  --checkin-visual-height: 184px;
+  --checkin-visual-compact: 88px;
+  --checkin-visual-font: 40px;
+  --checkin-status-size: 40px;
+  --checkin-spinner-size: 16px;
+  --checkin-spinner-duration: 900ms;
+  --checkin-enter-distance: 8px;
+  --checkin-caption-spacing: 0.14em;
+  --checkin-word-spacing: 0.24em;
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: var(--guest-space-6);
+  background: var(--guest-canvas);
+}
+
+.guest-checkin *,
+.guest-checkin *::before,
+.guest-checkin *::after {
+  box-sizing: border-box;
+}
+
+.guest-checkin .checkin-sheet {
+  width: 100%;
+  max-width: var(--checkin-sheet-width);
+  min-width: 0;
+  background: var(--guest-paper);
+  border-radius: var(--guest-radius-surface);
+  padding: var(--guest-space-8) var(--guest-space-6);
+}
+
+.guest-checkin p,
+.guest-checkin h1 {
+  margin: 0;
+}
+
+.guest-checkin h1 {
+  font: 300 var(--guest-font-title) / var(--guest-font-title-line) var(--guest-font-book);
+}
+
+.guest-checkin .checkin-brand {
+  color: var(--guest-muted);
+  font-size: var(--guest-font-small);
+  overflow-wrap: anywhere;
+}
+
+.guest-checkin .checkin-visual {
+  height: var(--checkin-visual-height);
+  border-radius: var(--guest-radius-photo);
+  background: var(--guest-night);
+  color: var(--guest-night-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--guest-space-3);
+  margin-block: var(--guest-space-6);
+  overflow: hidden;
+}
+
+.guest-checkin .checkin-visual-word {
+  font: 300 var(--checkin-visual-font) / var(--guest-font-title-line) var(--guest-font-book);
+  letter-spacing: var(--checkin-word-spacing);
+  padding-left: var(--checkin-word-spacing);
+}
+
+.guest-checkin .checkin-visual-caption {
+  font-size: var(--guest-font-small);
+  letter-spacing: var(--checkin-caption-spacing);
+  color: var(--guest-night-muted);
+}
+
+.guest-checkin .checkin-welcome p {
+  color: var(--guest-muted);
+  margin-top: var(--guest-space-2);
+}
+
+.guest-checkin .checkin-form {
+  margin-top: var(--guest-space-8);
+}
+
+.guest-checkin label {
+  display: block;
+  margin-bottom: var(--guest-space-2);
+}
+
+.guest-checkin input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--guest-control-height);
+  font: inherit;
+  font-size: var(--guest-font-input);
+  padding: var(--guest-space-3) var(--guest-space-4);
+  border: var(--guest-line-width) solid var(--guest-border);
+  border-radius: var(--guest-radius-control);
+  background: var(--guest-field);
+  color: var(--guest-ink);
+  transition: border-color var(--guest-duration-control);
+}
+
+.guest-checkin input::placeholder {
+  color: var(--guest-muted);
+}
+
+.guest-checkin input:hover:not(:disabled),
+.guest-checkin input:focus-visible {
+  border-color: var(--guest-action);
+}
+
+.guest-checkin input[aria-invalid='true'] {
+  border-color: var(--guest-error);
+}
+
+.guest-checkin input:focus-visible,
+.guest-checkin button:focus-visible {
+  outline: var(--guest-focus-width) solid var(--guest-action);
+  outline-offset: var(--guest-space-1);
+}
+
+.guest-checkin .checkin-error {
+  margin-top: var(--guest-space-2);
+  color: var(--guest-error);
+  font-size: var(--guest-font-body);
+  overflow-wrap: anywhere;
+}
+
+.guest-checkin .checkin-field-helper,
+.guest-checkin .checkin-result-helper {
+  color: var(--guest-muted);
+  font-size: var(--guest-font-small);
+  margin-top: var(--guest-space-2);
+}
+
+.guest-checkin .checkin-primary {
+  width: 100%;
+  min-height: var(--guest-control-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--guest-space-2);
+  margin-top: var(--guest-space-6);
+  padding: var(--guest-space-3) var(--guest-space-4);
+  border: 0;
+  border-radius: var(--guest-radius-control);
+  background: var(--guest-action);
+  color: var(--guest-paper);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background var(--guest-duration-control);
+}
+
+.guest-checkin .checkin-primary:hover:not(:disabled) {
+  background: var(--guest-action-hover);
+}
+
+.guest-checkin .checkin-primary:active:not(:disabled) {
+  background: var(--guest-action-active);
+}
+
+.guest-checkin .checkin-action-arrow {
+  margin-left: auto;
+}
+
+.guest-checkin :disabled {
+  cursor: wait;
+  opacity: var(--guest-disabled-opacity);
+}
+
+.guest-checkin .checkin-saving {
+  min-height: var(--guest-space-6);
+  margin-top: var(--guest-space-2);
+  color: var(--guest-muted);
+  font-size: var(--guest-font-small);
+}
+
+.guest-checkin .checkin-spinner {
+  width: var(--checkin-spinner-size);
+  height: var(--checkin-spinner-size);
+  border: var(--guest-focus-width) solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: checkin-spin var(--checkin-spinner-duration) linear infinite;
+}
+
+.guest-checkin .checkin-result {
+  margin-top: var(--guest-space-6);
+  animation: checkin-reveal var(--guest-duration-enter) var(--guest-ease) both;
+}
+
+/* Programmatic reading destination, not a form control. Buttons retain visible keyboard focus. */
+.guest-checkin .checkin-result:focus {
+  outline: none;
+}
+
+.guest-checkin .checkin-state-mark {
+  display: grid;
+  place-items: center;
+  width: var(--checkin-status-size);
+  height: var(--checkin-status-size);
+  background: var(--guest-soft);
+  color: var(--guest-action);
+  font-size: var(--guest-font-name);
+  border-radius: 50%;
+  margin-bottom: var(--guest-space-6);
+}
+
+.guest-checkin .checkin-guest-name {
+  font: 300 var(--guest-font-name) / var(--guest-font-line) var(--guest-font-book);
+  margin-block: var(--guest-space-2) var(--guest-space-6);
+  overflow-wrap: anywhere;
+}
+
+.guest-checkin .checkin-help {
+  font-size: var(--guest-font-small);
+  color: var(--guest-muted);
+  margin-top: var(--guest-space-8);
+  text-align: center;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.guest-checkin [data-result='true'] .checkin-visual {
+  height: var(--checkin-visual-compact);
+  flex-direction: row;
+}
+
+.guest-checkin [data-result='true'] .checkin-visual-word {
+  font-size: var(--guest-font-name);
+}
+
+@keyframes checkin-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes checkin-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(var(--checkin-enter-distance));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fixed media threshold: CSS custom properties cannot be used in native media conditions. */
+@media (max-width: 600px) {
+  .guest-checkin {
+    padding: 0;
+    background: var(--guest-paper);
+  }
+  .guest-checkin .checkin-sheet {
+    min-height: 100vh;
+    min-height: 100svh;
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guest-checkin .checkin-spinner {
+    animation: none;
+  }
+  .guest-checkin .checkin-result {
+    animation: none;
+  }
+  .guest-checkin input,
+  .guest-checkin button {
+    transition: none;
+  }
+}

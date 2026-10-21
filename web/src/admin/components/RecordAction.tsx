@@ -11,7 +11,7 @@ export function RecordAction({
   onClose: () => void;
 }) {
   const model = useRecordAction(target, onClose);
-  return <RecordActionView target={target} onClose={onClose} model={model} />;
+  return <RecordActionView target={target} model={model} />;
 }
 export function RecordHistory({
   entity,

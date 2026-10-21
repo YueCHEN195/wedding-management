@@ -1,129 +1,182 @@
+import { useEffect, useRef, type RefObject } from 'react';
 import { wedding } from '@shared/wedding';
 import type { PublicCheckinModel } from './usePublicCheckin';
-const RED = '#8c1c1c';
-const GOLD = '#c8a45c';
-export function CheckinView({
-  model: { attempt, name, setName, state, error, submit, next },
-}: {
-  model: PublicCheckinModel;
-}) {
+import '../guest/guest-tokens.css';
+import './checkin.css';
+
+type ResultState = Exclude<PublicCheckinModel['state'], 'idle' | 'saving'>;
+const resultCopy = {
+  done: {
+    mark: '···',
+    title: '登记已提交',
+    description: '请到签到处等候工作人员核对。',
+    helper: '工作人员确认后，才算完成签到。',
+    action: '为另一位宾客登记',
+  },
+  dup: {
+    mark: '···',
+    title: '你已提交过登记',
+    description: '无需重复提交，请在签到处等候核对。',
+    helper: '如姓名填写有误，请联系现场工作人员。',
+    action: '为另一位宾客登记',
+  },
+  confirmed: {
+    mark: '✓',
+    title: '已完成签到',
+    description: '工作人员已确认，感谢你的到来。',
+    helper: '愿你在这场相聚里，留下美好的回忆。',
+    action: '为另一位宾客登记',
+  },
+  inactive: {
+    mark: '!',
+    title: '这条登记已失效',
+    description: '登记已被驳回或撤销，请联系现场工作人员核对。',
+    helper: '如需重新登记，可使用下方按钮。',
+    action: '重新填写姓名',
+  },
+} satisfies Record<
+  ResultState,
+  { mark: string; title: string; description: string; helper: string; action: string }
+>;
+
+export function CheckinView({ model }: { model: PublicCheckinModel }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLElement>(null);
+  const hasShownResult = useRef(false);
+  const { state } = model;
+  const resultState = state === 'idle' || state === 'saving' ? null : state;
+
+  // Reading focus follows real responses; opening the page does not summon the mobile keyboard.
+  useEffect(() => {
+    if (resultState) {
+      resultRef.current?.focus();
+      hasShownResult.current = true;
+    } else if (hasShownResult.current) {
+      inputRef.current?.focus();
+      hasShownResult.current = false;
+    }
+  }, [resultState]);
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: `linear-gradient(180deg, ${RED} 0%, #5e1010 100%)`,
-        color: '#f7f3ea',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        textAlign: 'center',
+    <main className="guest-experience guest-checkin">
+      <div className="checkin-sheet" data-result={Boolean(resultState)}>
+        <header className="checkin-header">
+          <p className="checkin-brand">
+            {wedding.groomName} 与 {wedding.brideName}的婚礼
+          </p>
+          {/* Private wedding photos are not bundled or published. Replace this local visual after authorization. */}
+          <div className="checkin-visual" aria-hidden="true">
+            <span className="checkin-visual-word">相聚</span>
+            <span className="checkin-visual-caption">诚邀 · 相见</span>
+          </div>
+          {!resultState && (
+            <div className="checkin-welcome">
+              <h1>有你，正好。</h1>
+              <p>欢迎来到我们的婚礼。</p>
+            </div>
+          )}
+        </header>
+        {resultState ? (
+          <CheckinResult state={resultState} model={model} resultRef={resultRef} />
+        ) : (
+          <CheckinForm model={model} inputRef={inputRef} />
+        )}
+        <footer className="checkin-help">扫码或登记不便，请向现场工作人员寻求帮助。</footer>
+      </div>
+    </main>
+  );
+}
+
+function CheckinForm({
+  model: { name, setName, state, error, submit },
+  inputRef,
+}: {
+  model: Pick<PublicCheckinModel, 'name' | 'setName' | 'state' | 'error' | 'submit'>;
+  inputRef: RefObject<HTMLInputElement | null>;
+}) {
+  const saving = state === 'saving';
+  return (
+    <form
+      className="checkin-form"
+      noValidate
+      aria-busy={saving}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!name.trim()) inputRef.current?.focus();
+        void submit();
       }}
     >
-      <div style={{ fontSize: 72, color: GOLD, lineHeight: 1 }}>囍</div>
-      <h1 style={{ margin: '16px 0 4px', letterSpacing: 4 }}>
-        {wedding.groomName} &amp; {wedding.brideName}
-      </h1>
-      <p style={{ color: GOLD, marginBottom: 32 }}>现场签到</p>
-
-      {state === 'done' || state === 'dup' || state === 'confirmed' || state === 'inactive' ? (
-        <div
-          style={{
-            background: '#f7f3ea',
-            color: '#2b2b2b',
-            borderRadius: 16,
-            padding: '32px 28px',
-            width: '100%',
-            maxWidth: 360,
-          }}
-        >
-          <div style={{ fontSize: 48, color: '#2e7d32' }}>{state === 'done' ? '✓' : '☑'}</div>
-          <p style={{ margin: '12px 0 0' }}>{attempt?.name}</p>
-          <h2 style={{ margin: '12px 0' }}>
-            {state === 'inactive'
-              ? '此登记已驳回或撤销'
-              : state === 'confirmed'
-                ? '已完成签到'
-                : state === 'dup'
-                  ? '您已提交过'
-                  : '已提交'}
-          </h2>
-          <p style={{ color: '#666', margin: 0 }}>
-            {state === 'inactive'
-              ? '请联系现场工作人员核对；如需重新登记，请使用下方按钮。'
-              : state === 'confirmed'
-                ? '工作人员已确认您的签到，无需再次提交。感谢您的到来！'
-                : '请等待工作人员确认，感谢您的到来！'}
-          </p>
-          <button
-            onClick={next}
-            style={{
-              marginTop: 20,
-              background: RED,
-              color: '#fff',
-              border: 'none',
-              padding: '10px 24px',
-              borderRadius: 8,
-              fontSize: 15,
-              cursor: 'pointer',
-            }}
-          >
-            为另一位宾客登记
-          </button>
-        </div>
-      ) : (
-        <div
-          style={{
-            background: '#f7f3ea',
-            color: '#2b2b2b',
-            borderRadius: 16,
-            padding: '28px 24px',
-            width: '100%',
-            maxWidth: 360,
-          }}
-        >
-          <p style={{ marginTop: 0, color: '#666' }}>请输入您的姓名</p>
-          <input
-            aria-label="姓名"
-            disabled={state === 'saving'}
-            maxLength={30}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="姓名"
-            autoFocus
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              fontSize: 20,
-              borderRadius: 10,
-              border: '1px solid #ddd',
-              textAlign: 'center',
-              boxSizing: 'border-box',
-            }}
-          />
-          {error && <p style={{ color: '#cf1322' }}>{error}</p>}
-          <button
-            onClick={submit}
-            disabled={state === 'saving'}
-            style={{
-              marginTop: 18,
-              width: '100%',
-              background: RED,
-              color: '#fff',
-              border: 'none',
-              padding: '16px 0',
-              borderRadius: 10,
-              fontSize: 20,
-              letterSpacing: 4,
-              cursor: 'pointer',
-            }}
-          >
-            {state === 'saving' ? '提交中…' : '签 到'}
-          </button>
-        </div>
+      <label htmlFor="checkin-name">您的姓名</label>
+      <input
+        ref={inputRef}
+        id="checkin-name"
+        name="name"
+        autoComplete="name"
+        enterKeyHint="done"
+        required
+        maxLength={30}
+        placeholder="请输入本人姓名"
+        disabled={saving}
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault();
+        }}
+        aria-invalid={(Boolean(error) && !name.trim()) || undefined}
+        aria-describedby={error ? 'checkin-error checkin-name-helper' : 'checkin-name-helper'}
+      />
+      {error && (
+        <p className="checkin-error" id="checkin-error" role="alert">
+          {error}
+        </p>
       )}
-    </div>
+      <p className="checkin-field-helper" id="checkin-name-helper">
+        请填写本人姓名，提交后由工作人员核对。
+      </p>
+      <button className="checkin-primary" type="submit" disabled={saving}>
+        {saving && <span className="checkin-spinner" aria-hidden="true" />}
+        {saving ? '正在提交…' : error ? '重新提交' : '登记到场'}
+        {!saving && (
+          <span className="checkin-action-arrow" aria-hidden="true">
+            ↗
+          </span>
+        )}
+      </button>
+      <p className="checkin-saving" role="status">
+        {saving ? '正在发送登记，请稍候。' : ''}
+      </p>
+    </form>
+  );
+}
+
+function CheckinResult({
+  state,
+  model: { attempt, next },
+  resultRef,
+}: {
+  state: ResultState;
+  model: Pick<PublicCheckinModel, 'attempt' | 'next'>;
+  resultRef: RefObject<HTMLElement | null>;
+}) {
+  const copy = resultCopy[state];
+  return (
+    <section
+      className="checkin-result"
+      ref={resultRef}
+      tabIndex={-1}
+      aria-labelledby="checkin-result-title"
+      aria-describedby="checkin-result-description"
+    >
+      <span className="checkin-state-mark" aria-hidden="true">
+        {copy.mark}
+      </span>
+      <h1 id="checkin-result-title">{copy.title}</h1>
+      <p className="checkin-guest-name">{attempt?.name ?? '姓名未记录'}</p>
+      <p id="checkin-result-description">{copy.description}</p>
+      <p className="checkin-result-helper">{copy.helper}</p>
+      <button className="checkin-primary" type="button" onClick={next}>
+        {copy.action}
+      </button>
+    </section>
   );
 }

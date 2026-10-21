@@ -1,0 +1,46 @@
+/* Guest-facing foundation, deliberately independent of the admin Ant Design theme. */
+.guest-experience {
+  color-scheme: light;
+  --guest-paper: #f8f5ef;
+  --guest-canvas: #e9e6e0;
+  --guest-ink: #30332d;
+  --guest-muted: #716f65;
+  --guest-night: #191e1a;
+  --guest-night-text: #f4eee3;
+  --guest-night-muted: #c1bbaa;
+  --guest-action: #79564e;
+  --guest-action-hover: #67463f;
+  --guest-action-active: #583b35;
+  --guest-field: #fdfbf7;
+  --guest-soft: #eee8df;
+  --guest-border: #dbd4c9;
+  --guest-error: #9c453b;
+  --guest-space-1: 4px;
+  --guest-space-2: 8px;
+  --guest-space-3: 12px;
+  --guest-space-4: 16px;
+  --guest-space-6: 24px;
+  --guest-space-8: 32px;
+  --guest-space-10: 40px;
+  --guest-radius-control: 12px;
+  --guest-radius-photo: 18px;
+  --guest-radius-surface: 24px;
+  --guest-control-height: 48px;
+  --guest-focus-width: 2px;
+  --guest-line-width: 1px;
+  --guest-font-small: 12px;
+  --guest-font-body: 14px;
+  --guest-font-input: 16px;
+  --guest-font-name: 20px;
+  --guest-font-title: 28px;
+  --guest-font-line: 1.8;
+  --guest-font-title-line: 1.5;
+  --guest-font-ui: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --guest-font-book: 'Songti SC', STSong, SimSun, serif;
+  --guest-duration-control: 180ms;
+  --guest-duration-enter: 320ms;
+  --guest-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --guest-disabled-opacity: 0.55;
+  font: var(--guest-font-body) / var(--guest-font-line) var(--guest-font-ui);
+  color: var(--guest-ink);
+}

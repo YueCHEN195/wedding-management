@@ -1,6 +1,7 @@
 /* Shared admin geometry and surfaces. Canonical brand colors: theme.ts. */
 .admin-shell,
-.admin-dialog {
+.admin-dialog,
+.admin-login {
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

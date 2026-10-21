@@ -36,11 +36,9 @@ function History({ rows }: { rows: OperationLogDTO[] }) {
 }
 export function RecordActionView({
   target,
-  onClose,
-  model: { form, preview, submit },
+  model: { form, preview, submit, close },
 }: {
   target: RecordActionTarget;
-  onClose: () => void;
   model: RecordActionModel;
 }) {
   return (
@@ -52,7 +50,7 @@ export function RecordActionView({
       styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' } }}
       title={ACTION_LABEL[target.action]}
       onCancel={() => {
-        if (!submit.isPending) onClose();
+        void close();
       }}
       okText={ACTION_LABEL[target.action]}
       closable={!submit.isPending}
@@ -155,7 +153,20 @@ export function RecordHistoryView({
       {query.isPending ? (
         '正在读取…'
       ) : query.isError ? (
-        <Alert type="error" title={query.error.message} />
+        <Alert
+          type="error"
+          title={query.error.message}
+          action={
+            <Button
+              loading={query.isFetching}
+              onClick={() => {
+                void query.refetch();
+              }}
+            >
+              重试读取
+            </Button>
+          }
+        />
       ) : (
         <History rows={query.data} />
       )}

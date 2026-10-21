@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Space } from 'antd';
+import { Alert, Button, Popover, Segmented, Space } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ReviewDirectory } from './components/ReviewDirectory';
 import { CheckinEntry } from './components/CheckinEntry';
@@ -8,10 +8,13 @@ import { useReviewWorkbench } from './review/useReviewWorkbench';
 import { ReviewQueue } from './review/ReviewQueue.view';
 import { ReviewSummary } from './review/ReviewSummary.view';
 import { ReviewDrawer } from './review/ReviewDrawer.view';
+import { adminCssVariables } from './theme';
 import './review.css';
 export function ReviewPage() {
   const model = useReviewWorkbench();
   const [qrOpen, setQrOpen] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState('queue');
+  const [overviewOpen, setOverviewOpen] = useState(false);
   const {
     recordAction,
     setRecordAction,
@@ -58,6 +61,30 @@ export function ReviewPage() {
             刷新队列
           </Button>
           <Button onClick={() => setQrOpen(true)}>扫码 / 代登记</Button>
+          {me.data?.role === 'admin' && (
+            <Popover
+              open={overviewOpen}
+              onOpenChange={setOverviewOpen}
+              trigger="click"
+              content={
+                <div
+                  id="review-mobile-overview"
+                  className="admin-dialog review-mobile-overview"
+                  style={adminCssVariables}
+                >
+                  <ReviewSummary model={model} />
+                </div>
+              }
+            >
+              <Button
+                className="review-mobile-overview-toggle"
+                aria-expanded={overviewOpen}
+                aria-controls="review-mobile-overview"
+              >
+                现场概览
+              </Button>
+            </Popover>
+          )}
         </Space>
         <span className="review-connection">
           {pending.dataUpdatedAt
@@ -82,8 +109,24 @@ export function ReviewPage() {
           }
         />
       )}
-      <ReviewSummary model={model} />
-      <div className="review-grid">
+      {me.data?.role === 'admin' && (
+        <div className="review-desktop-overview">
+          <ReviewSummary model={model} />
+        </div>
+      )}
+      <Segmented
+        className="review-mobile-panels"
+        block
+        aria-label="现场审核模块"
+        value={mobilePanel}
+        onChange={setMobilePanel}
+        disabled={saving}
+        options={[
+          { label: `待审核${pending.data ? `（${pending.data.length}）` : ''}`, value: 'queue' },
+          { label: '宾客名单', value: 'directory' },
+        ]}
+      />
+      <div className="review-grid" data-mobile-panel={mobilePanel}>
         <ReviewQueue model={model} />
         <ReviewDirectory
           admin={me.data?.role === 'admin'}

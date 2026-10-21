@@ -1,0 +1,364 @@
+/* Login-only geometry and motion. Shared controls continue to use adminTheme.
+   The decorative composition is clipped; the form stays in normal page flow. */
+.admin-login {
+  --login-light: #fff5e9;
+  --login-muted: #c3d0ca;
+  --login-arch-color: #36534f;
+  --login-orbit-color: #688079;
+  --login-brand-padding: clamp(32px, 4.5vw, 72px);
+  --login-entry-padding: clamp(24px, 5vw, 80px);
+  --login-form-width: 384px;
+  --login-title-size: clamp(40px, 4.3vw, 68px);
+  --login-title-spacing: -0.025em;
+  --login-title-leading: 1.35;
+  --login-copy-leading: 1.9;
+  --login-heading-gap: 32px;
+  --login-section-gap: 48px;
+  --login-brand-min-height: 680px;
+  --login-art-size: clamp(200px, min(30vw, 40vh), 460px);
+  --login-art-bottom: 112px;
+  --login-mobile-art-size: 184px;
+  --login-mobile-art-opacity: 0.24;
+  --login-brand-columns: 54fr;
+  --login-entry-columns: 46fr;
+  /* Percentages position the abstract scene inside its own square, never business content. */
+  --login-disc-inset: 12% auto auto 12%;
+  --login-arch-right: 15%;
+  --login-orbit-top: 22%;
+  --login-orbit-dot-top: 18%;
+  --login-orbit-dot-left: 10%;
+  --login-satellite-top: 6%;
+  --login-satellite-right: 13%;
+  --login-caption-bottom: 12%;
+  --login-caption-right: 28%;
+  --login-focus-width: 2px;
+  --login-disc-size: 62%;
+  --login-arch-width: 38%;
+  --login-arch-height: 75%;
+  --login-satellite-size: 11%;
+  --login-orbit-width: 92%;
+  --login-orbit-height: 62%;
+  --login-orbit-tilt: -28deg;
+  --login-orbit-dot: 10px;
+  --login-mark-size: 20px;
+  --login-letter-space: 0.16em;
+  --login-micro-space: 0.1em;
+  --login-arch-radius: 50% 50% 0 0;
+  --login-enter-distance: 16px;
+  --login-float-distance: -12px;
+  --login-drift-distance: 20px;
+  --login-orbit-shift: 10deg;
+  --login-enter-duration: 900ms;
+  --login-enter-delay: 160ms;
+  --login-detail-delay: 280ms;
+  --login-float-duration: 8s;
+  --login-drift-duration: 11s;
+  --login-orbit-duration: 32s;
+  --login-response-duration: 200ms;
+  --login-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  display: grid;
+  grid-template-columns: minmax(0, var(--login-brand-columns)) minmax(0, var(--login-entry-columns));
+  min-height: 100svh;
+  color: var(--admin-text);
+  background: var(--login-paper);
+}
+.login-brand {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: var(--login-brand-min-height);
+  padding: var(--login-brand-padding);
+  color: var(--login-light);
+  background: var(--admin-copper);
+}
+.login-brand-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-section);
+  font-weight: 600;
+}
+.login-brand-name > span:last-child {
+  margin-left: auto;
+  color: var(--login-muted);
+  font-size: var(--font-caption);
+  font-weight: 400;
+  letter-spacing: var(--login-micro-space);
+}
+.login-mark {
+  width: var(--login-mark-size);
+  height: var(--login-mark-size);
+  border-radius: 50% 50% 50% 0;
+  background: var(--admin-coral);
+}
+.login-brand-content {
+  position: relative;
+  z-index: 1;
+  margin: var(--login-section-gap) 0 auto;
+}
+.login-eyebrow {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-caption);
+  letter-spacing: var(--login-letter-space);
+  color: var(--admin-secondary);
+}
+.login-brand .login-eyebrow {
+  color: var(--login-muted);
+}
+.login-brand h1 {
+  margin: 0;
+  font-size: var(--login-title-size);
+  line-height: var(--login-title-leading);
+  font-weight: 500;
+  letter-spacing: var(--login-title-spacing);
+}
+.login-brand h1 span {
+  color: var(--admin-coral);
+}
+.login-brand-description {
+  margin: var(--space-6) 0 0;
+  font-size: var(--font-body);
+  line-height: var(--login-copy-leading);
+  color: var(--login-muted);
+}
+.login-art {
+  position: absolute;
+  pointer-events: none;
+  right: var(--login-brand-padding);
+  bottom: var(--login-art-bottom);
+  width: var(--login-art-size);
+  height: var(--login-art-size);
+}
+.login-disc {
+  position: absolute;
+  inset: var(--login-disc-inset);
+  width: var(--login-disc-size);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--admin-coral);
+  animation: login-float var(--login-float-duration) ease-in-out infinite alternate;
+}
+.login-arch {
+  position: absolute;
+  right: var(--login-arch-right);
+  bottom: 0;
+  width: var(--login-arch-width);
+  height: var(--login-arch-height);
+  border-radius: var(--login-arch-radius);
+  background: var(--login-arch-color);
+  animation: login-float var(--login-drift-duration) ease-in-out infinite alternate-reverse;
+}
+.login-orbit {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: var(--login-orbit-top);
+  width: var(--login-orbit-width);
+  height: var(--login-orbit-height);
+  border: var(--line-width) solid var(--login-orbit-color);
+  border-radius: 50%;
+  transform: rotate(var(--login-orbit-tilt));
+  animation: login-orbit var(--login-orbit-duration) ease-in-out infinite alternate;
+}
+.login-orbit span {
+  position: absolute;
+  top: var(--login-orbit-dot-top);
+  left: var(--login-orbit-dot-left);
+  width: var(--login-orbit-dot);
+  height: var(--login-orbit-dot);
+  border-radius: 50%;
+  background: var(--login-light);
+}
+.login-satellite {
+  position: absolute;
+  top: var(--login-satellite-top);
+  right: var(--login-satellite-right);
+  width: var(--login-satellite-size);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--login-light);
+  animation: login-drift var(--login-drift-duration) ease-in-out infinite alternate;
+}
+.login-art-caption {
+  position: absolute;
+  bottom: var(--login-caption-bottom);
+  right: var(--login-caption-right);
+  z-index: 1;
+  writing-mode: vertical-rl;
+  letter-spacing: var(--login-letter-space);
+  font-size: var(--font-secondary);
+}
+.login-brand-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  font-size: var(--font-caption);
+  color: var(--login-muted);
+}
+.admin-login .login-motion-toggle {
+  min-height: var(--touch-height);
+  color: var(--login-light);
+}
+.admin-login .login-motion-toggle:hover {
+  color: var(--admin-coral);
+}
+.login-entry {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  padding: var(--login-entry-padding);
+}
+.login-form-wrap {
+  width: min(100%, var(--login-form-width));
+  margin: auto 0;
+}
+.login-entry h2 {
+  margin: 0;
+  font-size: var(--font-page);
+  font-weight: 600;
+}
+.login-intro {
+  margin: var(--space-3) 0 var(--login-heading-gap);
+  color: var(--admin-secondary);
+  font-size: var(--font-body);
+  line-height: var(--login-copy-leading);
+}
+.admin-login .login-error {
+  margin-bottom: var(--space-5);
+}
+.admin-login .login-submit {
+  margin-top: var(--space-2);
+}
+.login-submit .anticon {
+  transition: transform var(--login-response-duration) var(--login-ease);
+}
+.login-submit:not(:disabled):hover .anticon-arrow-right {
+  transform: translateX(var(--space-1));
+}
+.login-helper,
+.login-entry-footer {
+  font-size: var(--font-caption);
+  line-height: var(--login-copy-leading);
+  color: var(--admin-secondary);
+}
+.login-helper {
+  margin: var(--space-5) 0 0;
+}
+.login-entry-footer {
+  margin-top: var(--login-section-gap);
+  text-align: center;
+}
+.login-brand-content,
+.login-art,
+.login-form-wrap {
+  animation: login-enter var(--login-enter-duration) var(--login-ease) both;
+}
+.login-art {
+  animation-delay: var(--login-enter-delay);
+}
+.login-form-wrap {
+  animation-delay: var(--login-detail-delay);
+}
+.admin-login[data-paused='true'] .login-art > div {
+  animation-play-state: paused;
+}
+/* Inputs already receive the shared AntD focus border/shadow. Extra outlines
+   belong to actions only, avoiding a second ring around the plain account input. */
+.admin-login :is(button, [role='button'], a):focus-visible {
+  outline: var(--login-focus-width) solid var(--admin-coral);
+  outline-offset: var(--space-1);
+}
+@keyframes login-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--login-enter-distance));
+  }
+  to {
+    opacity: var(--login-enter-opacity, 1);
+    transform: translateY(0);
+  }
+}
+@keyframes login-float {
+  to {
+    transform: translateY(var(--login-float-distance));
+  }
+}
+@keyframes login-drift {
+  to {
+    transform: translate(var(--login-drift-distance), var(--login-float-distance));
+  }
+}
+@keyframes login-orbit {
+  to {
+    transform: rotate(var(--login-orbit-shift));
+  }
+}
+/* Native media conditions cannot use CSS custom properties. Tablet/mobile share 767px with admin navigation. */
+@media (max-width: 767px) {
+  .admin-login {
+    grid-template-columns: minmax(0, 1fr);
+    --login-section-gap: 32px;
+  }
+  .login-brand {
+    min-height: 0;
+    padding: var(--space-6);
+  }
+  .login-brand-name > span:last-child {
+    display: none;
+  }
+  .login-brand-content {
+    margin-top: var(--space-6);
+  }
+  .login-brand .login-eyebrow,
+  .login-brand-description {
+    display: none;
+  }
+  .login-brand h1 {
+    font-size: var(--font-page);
+  }
+  .login-brand h1 br {
+    display: none;
+  }
+  .login-art {
+    --login-enter-opacity: var(--login-mobile-art-opacity);
+    position: absolute;
+    width: var(--login-mobile-art-size);
+    height: var(--login-mobile-art-size);
+    right: 0;
+    bottom: 0;
+    opacity: var(--login-mobile-art-opacity);
+  }
+  .login-art-caption {
+    display: none;
+  }
+  .login-brand-footer {
+    margin-top: var(--space-3);
+  }
+  .login-entry {
+    padding: var(--login-heading-gap) var(--space-6);
+  }
+  .login-entry-footer {
+    margin-top: var(--login-heading-gap);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-login *,
+  .admin-login *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+  .login-motion-toggle {
+    display: none;
+  }
+}

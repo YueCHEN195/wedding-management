@@ -28,7 +28,8 @@ export interface AdminOutletContext {
   registerNavigationGuard: (guard: () => Promise<boolean>) => () => void;
 }
 export function AdminLayout() {
-  const { registerNavigationGuard, location, me, openRoute, logout } = useAdminNavigation();
+  const { registerNavigationGuard, location, me, openRoute, logout, logoutPending, logoutError } =
+    useAdminNavigation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [compactNavigation, setCompactNavigation] = useState(false);
   const menu = me?.role === 'staff' ? STAFF_MENU : MENU;
@@ -86,18 +87,26 @@ export function AdminLayout() {
               婚礼管理 / {menu.find((item) => item.key === location.pathname)?.label ?? '工作台'}
             </Typography.Text>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="admin-header-account">
             <Tag variant="filled">{me?.role === 'admin' ? '管理员' : '工作人员'}</Tag>
-            <Typography.Text>{me?.username}</Typography.Text>
+            <Typography.Text className="admin-user-name" ellipsis={{ tooltip: me?.username }}>
+              {me?.username}
+            </Typography.Text>
             <Button
               type="text"
               size="small"
+              loading={logoutPending}
               onClick={() => {
                 void logout();
               }}
             >
-              退出
+              {logoutError ? '重试退出' : '退出'}
             </Button>
+            {logoutError && (
+              <Typography.Text type="danger" role="alert" className="admin-session-error">
+                {logoutError}
+              </Typography.Text>
+            )}
           </div>
         </Layout.Header>
         <Layout.Content

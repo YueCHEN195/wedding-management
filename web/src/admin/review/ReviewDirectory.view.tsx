@@ -1,6 +1,7 @@
 import { StatusTag } from '../components/StatusTag';
 import '../components/filter-bar.css';
-import { Alert, Button, Empty, Input, Select, Tabs } from 'antd';
+import { Alert, Button, Empty, Input, Select, Tabs, Tooltip } from 'antd';
+import { TableText } from '../components/TableText';
 import { ViewportTable } from '../components/ViewportTable';
 import type { ColumnsType } from 'antd/es/table';
 import type { ReviewGuestRow, ReviewGuestStatus } from '@shared/types';
@@ -126,6 +127,7 @@ export function ReviewDirectoryView({
           pageSize: 10,
           total: query.data?.total,
           showSizeChanger: false,
+          showTotal: query.data ? (total) => `${total} 条` : undefined,
           onChange: setPage,
         }}
       />
@@ -148,18 +150,25 @@ function reviewDirectoryColumns(
       width: 120,
       fixed: 'left',
       render: (_, r) => (
-        <Button type="link" onClick={() => setSelected(r)}>
-          {r.name}
-        </Button>
+        <Tooltip title={r.name} trigger={['hover', 'focus']}>
+          <Button className="review-directory-name" type="link" onClick={() => setSelected(r)}>
+            <span>{r.name}</span>
+          </Button>
+        </Tooltip>
       ),
     },
     {
       title: '分组 / 归属',
       width: 145,
+      ellipsis: { showTitle: false },
       render: (_, r) =>
-        r.guestId == null
-          ? '未匹配档案'
-          : [r.groupName, r.side && SIDE_LABEL[r.side]].filter(Boolean).join(' · ') || '—',
+        r.guestId == null ? (
+          '未匹配档案'
+        ) : (
+          <TableText
+            value={[r.groupName, r.side && SIDE_LABEL[r.side]].filter(Boolean).join(' · ')}
+          />
+        ),
     },
     {
       title: '预计',
@@ -206,8 +215,8 @@ function reviewDirectoryColumns(
             title: '备注',
             dataIndex: 'note',
             width: 130,
-            ellipsis: true,
-            render: (v: string | null) => v || '—',
+            ellipsis: { showTitle: false },
+            render: (v: string | null) => <TableText value={v} />,
           },
         ]
       : []),

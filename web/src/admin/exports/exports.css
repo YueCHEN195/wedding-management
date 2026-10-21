@@ -1,0 +1,144 @@
+/* Export-only composition. Shared header, native buttons and Collapse inherit the admin theme. */
+.export-page {
+  --export-content-columns: minmax(0, 0.7fr) minmax(0, 1.3fr) auto;
+  --export-field-columns: repeat(4, minmax(0, 1fr));
+  --export-emphasis-weight: 600;
+}
+.export-overview {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-6);
+  background: var(--admin-processing);
+  border-radius: var(--radius-panel);
+  margin-bottom: var(--space-6);
+}
+.export-eyebrow {
+  color: var(--admin-primary);
+  font-size: var(--font-caption);
+}
+.export-overview h2 {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--font-heading);
+  font-weight: var(--export-emphasis-weight);
+}
+.export-overview p {
+  margin: 0;
+  color: var(--admin-secondary);
+}
+.export-overview dl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0;
+}
+.export-overview dt {
+  color: var(--admin-secondary);
+  font-size: var(--font-caption);
+  margin-bottom: var(--space-1);
+}
+.export-overview dd {
+  margin: 0;
+  font-weight: var(--export-emphasis-weight);
+}
+.export-list-heading {
+  display: flex;
+  justify-content: space-between;
+  color: var(--admin-secondary);
+  font-size: var(--font-secondary);
+  padding: 0 var(--space-4) var(--space-3);
+  border-bottom: var(--line-width) solid var(--admin-divider);
+}
+.export-row {
+  padding: var(--space-5) var(--space-4);
+  border-bottom: var(--line-width) solid var(--admin-divider);
+}
+.export-row-main {
+  display: grid;
+  grid-template-columns: var(--export-content-columns);
+  align-items: center;
+  gap: var(--space-5);
+}
+.export-row-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.export-row-title > .anticon {
+  color: var(--admin-primary);
+  font-size: var(--font-page);
+}
+.export-row-title h2 {
+  margin: 0;
+  font-size: var(--font-section);
+  font-weight: var(--export-emphasis-weight);
+}
+.export-row-title p,
+.export-row-scope p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-secondary);
+  color: var(--admin-secondary);
+}
+.export-row-scope strong {
+  font-size: var(--font-body);
+  font-weight: var(--export-emphasis-weight);
+}
+.export-row-action {
+  text-align: right;
+}
+.export-fields p {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-secondary);
+  color: var(--admin-secondary);
+}
+.export-fields ul {
+  display: grid;
+  grid-template-columns: var(--export-field-columns);
+  gap: var(--space-2) var(--space-4);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.export-fields li {
+  padding: var(--space-1) var(--space-2);
+  background: var(--admin-processing);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-secondary);
+  overflow-wrap: anywhere;
+}
+.export-progress,
+.export-page-note {
+  margin: var(--space-3) 0 0;
+  color: var(--admin-secondary);
+  font-size: var(--font-secondary);
+}
+.export-feedback {
+  margin-top: var(--space-3);
+}
+@media (max-width: 767px) {
+  .export-page {
+    --export-content-columns: minmax(0, 1fr) auto;
+    --export-field-columns: repeat(2, minmax(0, 1fr));
+  }
+  .export-row-scope {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .export-overview {
+    padding: var(--space-4);
+  }
+}
+@media (max-width: 479px) {
+  .export-row {
+    padding-inline: 0;
+  }
+  .export-list-heading {
+    padding-inline: 0;
+  }
+  .export-row-main {
+    gap: var(--space-3);
+  }
+}

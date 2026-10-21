@@ -2,12 +2,11 @@
 .review-workbench {
   --review-queue-column: 0.26fr;
   --review-directory-column: 0.74fr;
-  --queue-share: 0.34fr;
-  --directory-share: 0.66fr;
   --surface-queue: #fffefd;
   --surface-ticket: #f7f3ed;
   --surface-ticket-hover: #f4e8de;
   --surface-ticket-selected: #f0dacc;
+  --review-row-height: 56px;
 }
 .review-drawer {
   --surface-summary: #efdfd3;
@@ -215,6 +214,32 @@
   margin: 0;
   border: 0;
 }
+.review-desktop-overview {
+  flex-shrink: 0;
+}
+.review-mobile-panels,
+.review-mobile-overview-toggle {
+  display: none;
+}
+.review-mobile-overview {
+  --review-overview-width: 320px;
+  width: min(var(--review-overview-width), calc(100vw - var(--space-6) * 2));
+}
+.review-directory .ant-table-row {
+  height: var(--review-row-height);
+}
+.review-directory .ant-table-cell {
+  white-space: nowrap;
+}
+.review-directory-name {
+  max-width: 100%;
+  min-width: 0;
+}
+.review-directory-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .review-directory {
   min-width: 0;
   min-height: 0;
@@ -247,7 +272,7 @@
   display: flex;
   justify-content: center;
 }
-/* Small screens stack the two data modules; input remains in the full-height drawer. */
+/* Narrow screens switch modules without losing their state; forms remain in the drawer. */
 @media (max-width: 767px) {
   .review-heading p {
     display: none;
@@ -256,8 +281,33 @@
     display: none;
   }
   .review-grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, var(--queue-share)) minmax(0, var(--directory-share));
+    display: flex;
+    flex-direction: column;
+  }
+  .review-desktop-overview {
+    display: none;
+  }
+  .review-mobile-panels {
+    display: block;
+    flex-shrink: 0;
+  }
+  .review-mobile-overview-toggle {
+    display: inline-flex;
+  }
+  .review-grid > * {
+    flex: 1;
+  }
+  .review-grid[data-mobile-panel='queue'] .review-directory,
+  .review-grid[data-mobile-panel='directory'] .review-queue {
+    display: none;
+  }
+  .review-filterbar .ant-input-search {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+  .review-filterbar > .review-connection {
+    display: none;
   }
   .review-attendance,
   .review-money-fields {

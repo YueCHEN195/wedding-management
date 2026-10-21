@@ -46,7 +46,7 @@ export function StaffGuestsView({ model }: { model: StaffGuestsModel }) {
         <TableText
           value={
             r.attending
-              ? `${ATTENDING_LABEL[r.attending]}${r.attending === 'yes' ? ` · ${r.headcount}人（含儿童${r.childrenCount}人）` : ''}`
+              ? `${ATTENDING_LABEL[r.attending]}${r.attending === 'yes' ? ` · ${attendanceText(r.headcount, r.childrenCount)}` : ''}`
               : '未填回执'
           }
         />
@@ -186,7 +186,7 @@ function StaffGuestDetails({ model }: { model: StaffGuestsModel }) {
                       {
                         key: 'count',
                         label: '预计到场',
-                        children: `${guest.headcount}人（含儿童${guest.childrenCount}人）`,
+                        children: attendanceText(guest.headcount, guest.childrenCount),
                       },
                     ]
                   : []),
@@ -213,7 +213,7 @@ function StaffGuestDetails({ model }: { model: StaffGuestsModel }) {
                     <span>
                       {c.actualHeadcount == null
                         ? '人数未记录'
-                        : `实到${c.actualHeadcount}人（含儿童${c.actualChildrenCount ?? '未记录'}人）`}
+                        : `实到${attendanceText(c.actualHeadcount, c.actualChildrenCount)}`}
                     </span>
                   </div>
                 ))
@@ -226,4 +226,9 @@ function StaffGuestDetails({ model }: { model: StaffGuestsModel }) {
       )}
     </AdminDrawer>
   );
+}
+
+function attendanceText(total: number | null, children: number | null) {
+  if (total == null) return '人数未记录';
+  return `${total}人（${children == null ? '儿童人数未记录' : `含儿童${children}人`}）`;
 }

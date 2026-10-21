@@ -4,6 +4,7 @@ import { api } from '@/api/client';
 import type { LifecycleEntity } from '@shared/types';
 import type { RecordActionTarget } from './types';
 import { adminFeedback } from '../theme';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 export function useRecordAction(target: RecordActionTarget, onClose: () => void) {
   const qc = useQueryClient();
   const [form] = Form.useForm<{ reason: string }>();
@@ -51,7 +52,15 @@ export function useRecordAction(target: RecordActionTarget, onClose: () => void)
       void preview.refetch();
     },
   });
-  return { form, preview, submit };
+  const reason = Form.useWatch('reason', form);
+  const canClose = useUnsavedChanges({
+    dirty: typeof reason === 'string' && reason.length > 0,
+    busy: submit.isPending,
+  });
+  const close = async () => {
+    if (await canClose()) onClose();
+  };
+  return { form, preview, submit, close };
 }
 export type RecordActionModel = ReturnType<typeof useRecordAction>;
 export function useRecordHistory(entity: LifecycleEntity, id: number) {

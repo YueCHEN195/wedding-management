@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { message } from 'antd';
 import { api, ApiError } from '@/api/client';
 import { replaceSession } from '@/api/session';
 export function useLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
+  const submitLock = useRef(false);
+  const [motionPaused, setMotionPaused] = useState(false);
 
   const from = (location.state as { from?: string } | null)?.from ?? '/admin';
 
@@ -19,10 +19,26 @@ export function useLogin() {
       await replaceSession(queryClient, user);
       void navigate(from, { replace: true });
     },
-    onError: (err) => {
-      message.error(err instanceof ApiError ? err.message : '登录失败');
+    onSettled: () => {
+      submitLock.current = false;
     },
-    onSettled: () => setLoading(false),
   });
-  return { loading, setLoading, login };
+  const submit = (values: { username: string; password: string }) => {
+    if (submitLock.current) return;
+    submitLock.current = true;
+    login.mutate(values);
+  };
+  return {
+    loading: login.isPending,
+    error: login.error
+      ? login.error instanceof ApiError
+        ? login.error.message
+        : '登录失败，请稍后重试'
+      : null,
+    submit,
+    motionPaused,
+    toggleMotion: () => setMotionPaused((paused) => !paused),
+  };
 }
+
+export type LoginModel = ReturnType<typeof useLogin>;
