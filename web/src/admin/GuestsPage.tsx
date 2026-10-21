@@ -154,15 +154,21 @@ function AdminGuestsPage() {
             />
             <div className="guest-media-link">
               <Typography.Paragraph copyable>{media.guest.inviteUrl}</Typography.Paragraph>
+              <Typography.Paragraph type="secondary">
+                请先核对手机可访问此链接；专属二维码仅发送给受邀本人。标注预览的海报请勿分发。
+              </Typography.Paragraph>
             </div>
-            {media.type === 'poster' && (
-              <Button
-                icon={<DownloadOutlined aria-hidden />}
-                href={api.guests.posterUrl(media.guest.id)}
-              >
-                下载海报
-              </Button>
-            )}
+            <Button
+              icon={<DownloadOutlined aria-hidden />}
+              href={
+                media.type === 'poster'
+                  ? api.guests.posterUrl(media.guest.id)
+                  : api.guests.qrUrl(media.guest.id)
+              }
+              download={media.type === 'poster' ? '专属海报.png' : '专属二维码.png'}
+            >
+              {media.type === 'poster' ? '下载海报' : '下载二维码'}
+            </Button>
           </div>
         )}
       </Modal>

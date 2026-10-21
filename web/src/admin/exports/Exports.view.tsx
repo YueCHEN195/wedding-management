@@ -3,6 +3,7 @@ import { DownloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { PageHeader } from '../components/PageHeader';
 import { EXPORT_ITEMS, type ExportItem } from './exportItems';
 import type { ExportsModel } from './useExportsPage';
+import { MediaOutputs } from './MediaOutputs.view';
 import './exports.css';
 
 export function ExportsView({ model }: { model: ExportsModel }) {
@@ -38,6 +39,7 @@ export function ExportsView({ model }: { model: ExportsModel }) {
       <p className="export-page-note">
         文件可能包含手机号、邀请链接及礼金信息，请按需要妥善留存。下载是否完成及保存位置，以浏览器下载列表为准。
       </p>
+      <MediaOutputs model={model} />
     </div>
   );
 }

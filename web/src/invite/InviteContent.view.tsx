@@ -1,164 +1,161 @@
-import { motion } from 'framer-motion';
+import { useRef, useState, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { wedding } from '@shared/wedding';
-import { openMap, share } from './invitationActions';
+import { weddingDisplay } from './invitationFormat';
 import type { useCountdown } from './useCountdown';
 import type { InvitationModel } from './useInvitation';
 import { RsvpForm } from './RsvpForm.view';
-import { RED, GOLD, PAPER, sectionStyle, titleStyle, cardStyle } from './invitationStyles';
-function pad(n: number) {
-  return String(n).padStart(2, '0');
-}
+import { InviteNavigation } from './InviteNavigation.view';
+import { InviteActions } from './InviteActions.view';
+import { RSVP_FORM_ID, rsvpSubmitLabel } from './rsvpPresentation';
+
 export function InviteContent({
   model,
   cd,
+  detailRef,
+  actionRoot,
+  actionsReady,
+  onBackCover,
 }: {
   model: InvitationModel;
   cd: ReturnType<typeof useCountdown>;
+  detailRef: RefObject<HTMLElement | null>;
+  actionRoot: HTMLElement | null;
+  actionsReady: boolean;
+  onBackCover: () => void;
 }) {
-  const { greeting } = model;
+  const reply = useRef<HTMLDetailsElement>(null);
+  const [detailImageFailed, setDetailImageFailed] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [editVersion, setEditVersion] = useState(0);
+  const showReceipt = Boolean(model.savedReply) && model.saveVersion > editVersion;
+  const openReply = () => {
+    if (!reply.current) return;
+    reply.current.open = true;
+    reply.current.scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    });
+    reply.current.querySelector('summary')?.focus({ preventScroll: true });
+  };
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }}>
-      {/* 问候 */}
-      <div style={sectionStyle}>
-        <p style={{ textAlign: 'center', lineHeight: 2, fontSize: 16 }}>
-          {greeting ? `亲爱的 ${greeting}：` : '亲爱的亲友：'}
-          <br />
-          {wedding.invitationText}
-        </p>
-      </div>
-
-      {/* 新人 */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>— 我们 —</div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <img
-            src={wedding.images.gallery[0]}
-            alt="couple"
-            style={{ width: '100%', borderRadius: 12, objectFit: 'cover' }}
-          />
-        </div>
-        <p style={{ textAlign: 'center', marginTop: 16, opacity: 0.9, lineHeight: 1.9 }}>
-          {wedding.story}
-        </p>
-      </div>
-
-      {/* 倒计时 */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>— 婚礼倒计时 —</div>
-        {cd.arrived ? (
-          <div style={{ textAlign: 'center', fontSize: 22, color: GOLD }}>今天，我们结婚啦</div>
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-            {[
-              { v: cd.days, l: '天' },
-              { v: cd.hours, l: '时' },
-              { v: cd.minutes, l: '分' },
-              { v: cd.seconds, l: '秒' },
-            ].map((x) => (
-              <div key={x.l} style={{ textAlign: 'center', minWidth: 56 }}>
-                <div style={{ fontSize: 30, color: GOLD }}>{pad(x.v)}</div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>{x.l}</div>
-              </div>
-            ))}
+    <section
+      className="invite-content"
+      ref={detailRef}
+      tabIndex={-1}
+      aria-labelledby="invite-greeting"
+    >
+      <p className="invite-eyebrow">诚 挚 邀 请</p>
+      <h2 id="invite-greeting">{model.greeting ? `亲爱的${model.greeting}` : '亲爱的亲友'}</h2>
+      <p className="invite-letter">{wedding.invitationText.replace('，', '，\n')}</p>
+      {!detailImageFailed && (
+        <img
+          className="invite-detail-photo"
+          src={wedding.images.detail}
+          alt="两人手持烟花的夜景婚纱合照"
+          width={1600}
+          height={1067}
+          loading="lazy"
+          decoding="async"
+          onError={() => setDetailImageFailed(true)}
+        />
+      )}
+      <div className="invite-event">
+        <time dateTime={wedding.date}>
+          {weddingDisplay.date} · {weddingDisplay.weekday}
+        </time>
+        <p className="invite-opening">{weddingDisplay.opening} 开席</p>
+        <div className="invite-venue">
+          <div>
+            <p>{wedding.venue.name}</p>
+            <p className="invite-helper">{wedding.venue.address}</p>
           </div>
-        )}
-      </div>
-
-      {/* 婚礼信息 */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>— 婚礼信息 —</div>
-        <div style={cardStyle}>
-          <p style={{ margin: 0, fontWeight: 600 }}>
-            {new Date(wedding.date).toLocaleString('zh-CN', {
-              dateStyle: 'full',
-              timeStyle: 'short',
-            })}
-          </p>
-          <p style={{ margin: '8px 0' }}>
-            {wedding.venue.name} · {wedding.venue.hall}
-          </p>
-          <p style={{ margin: '0 0 16px', color: '#666' }}>{wedding.venue.address}</p>
-          <button
-            onClick={openMap}
-            style={{
-              width: '100%',
-              background: RED,
-              color: PAPER,
-              border: 'none',
-              padding: '10px 0',
-              borderRadius: 8,
-              fontSize: 15,
-              cursor: 'pointer',
-            }}
-          >
-            一键导航
-          </button>
+          <InviteNavigation />
         </div>
       </div>
-
-      {/* 婚礼流程 */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>— 婚礼流程 —</div>
-        <div style={{ paddingLeft: 8 }}>
-          {wedding.schedule.map((s) => (
-            <div key={s.time} style={{ display: 'flex', gap: 16, marginBottom: 14 }}>
-              <div style={{ color: GOLD, width: 64, textAlign: 'right' }}>{s.time}</div>
-              <div style={{ borderLeft: `1px solid ${GOLD}`, paddingLeft: 16 }}>{s.title}</div>
+      <p className="invite-arrival">{wedding.closingText}</p>
+      <button className="invite-primary invite-open-inline" type="button" onClick={openReply}>
+        {model.submitted ? '查看或修改回执' : '填写回执'} <span aria-hidden="true">↗</span>
+      </button>
+      <button className="invite-text-button invite-back-cover" type="button" onClick={onBackCover}>
+        返回封面
+      </button>
+      <details className="invite-extras">
+        <summary>婚礼安排</summary>
+        <div className="invite-extra-body">
+          <p>
+            {weddingDisplay.fullDate} · {weddingDisplay.weekday}
+          </p>
+          {wedding.schedule.map((item) => (
+            <p key={item.time}>
+              {item.time} · {item.title}
+            </p>
+          ))}
+          <p className="invite-helper">
+            {cd.arrived
+              ? '期待这场相聚。'
+              : `距离相聚还有 ${cd.days} 天 ${cd.hours} 时 ${cd.minutes} 分`}
+          </p>
+        </div>
+      </details>
+      {(wedding.story || wedding.images.gallery.length > 0) && (
+        <details className="invite-extras">
+          <summary>影像与故事</summary>
+          <div className="invite-extra-body">
+            {wedding.story && <p>{wedding.story}</p>}
+            <div className="invite-gallery">
+              {wedding.images.gallery.map((src, index) => (
+                <img key={src} src={src} alt={`婚礼相册照片 ${index + 1}`} loading="lazy" />
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 相册 */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>— 相册 —</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {wedding.images.gallery.map((img, i) => (
-            <img
-              key={i}
-              src={img}
-              alt={`gallery-${i}`}
-              style={{ width: '100%', borderRadius: 8, display: 'block' }}
-            />
-          ))}
-        </div>
-      </div>
-
-      <RsvpForm model={model} />
-      {/* 联系与分享 */}
-      <div style={{ ...sectionStyle, textAlign: 'center', paddingBottom: 60 }}>
-        <div style={{ color: GOLD, marginBottom: 12 }}>{wedding.closingText}</div>
-        <div style={{ letterSpacing: 4, marginBottom: 20 }}>
-          {wedding.groomName} &amp; {wedding.brideName} 敬邀
-        </div>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <a
-            href={`tel:${wedding.contact.phone}`}
-            style={{
-              color: PAPER,
-              border: `1px solid ${GOLD}`,
-              borderRadius: 999,
-              padding: '8px 20px',
-              textDecoration: 'none',
-            }}
+          </div>
+        </details>
+      )}
+      <details
+        className="invite-reply"
+        ref={reply}
+        onToggle={(event) => setReplyOpen(event.currentTarget.open)}
+      >
+        <summary>出席回执</summary>
+        <RsvpForm
+          model={model}
+          showReceipt={showReceipt}
+          onEdit={() => setEditVersion(model.saveVersion)}
+          onBack={() => {
+            if (reply.current) reply.current.open = false;
+            detailRef.current?.scrollIntoView({
+              behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'instant'
+                : 'smooth',
+            });
+            detailRef.current?.focus({ preventScroll: true });
+          }}
+        />
+      </details>
+      <InviteActions universal={model.universal} />
+      {actionRoot &&
+        createPortal(
+          <div
+            className="invite-mobile-actions"
+            hidden={!actionsReady || (replyOpen && showReceipt)}
           >
-            联系新人
-          </a>
-          <button
-            onClick={share}
-            style={{
-              background: 'transparent',
-              color: PAPER,
-              border: `1px solid ${GOLD}`,
-              borderRadius: 999,
-              padding: '8px 20px',
-              cursor: 'pointer',
-            }}
-          >
-            分享请柬
-          </button>
-        </div>
-      </div>
-    </motion.div>
+            {replyOpen ? (
+              <button
+                className="invite-primary"
+                type="submit"
+                form={RSVP_FORM_ID}
+                disabled={model.saving}
+              >
+                {rsvpSubmitLabel(model)}
+              </button>
+            ) : (
+              <button className="invite-primary" type="button" onClick={openReply}>
+                {model.submitted ? '查看或修改回执' : '填写回执'}
+                <span aria-hidden="true">↗</span>
+              </button>
+            )}
+          </div>,
+          actionRoot,
+        )}
+    </section>
   );
 }

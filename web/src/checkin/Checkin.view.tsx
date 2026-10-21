@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { wedding } from '@shared/wedding';
 import type { PublicCheckinModel } from './usePublicCheckin';
 import '../guest/guest-tokens.css';
@@ -40,6 +40,7 @@ const resultCopy = {
 >;
 
 export function CheckinView({ model }: { model: PublicCheckinModel }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLElement>(null);
   const hasShownResult = useRef(false);
@@ -61,13 +62,24 @@ export function CheckinView({ model }: { model: PublicCheckinModel }) {
     <main className="guest-experience guest-checkin">
       <div className="checkin-sheet" data-result={Boolean(resultState)}>
         <header className="checkin-header">
-          <p className="checkin-brand">
+          <p className="guest-brand checkin-brand">
+            <span className="guest-brand-mark" aria-hidden="true" />
             {wedding.groomName} 与 {wedding.brideName}的婚礼
           </p>
-          {/* Private wedding photos are not bundled or published. Replace this local visual after authorization. */}
           <div className="checkin-visual" aria-hidden="true">
-            <span className="checkin-visual-word">相聚</span>
-            <span className="checkin-visual-caption">诚邀 · 相见</span>
+            {!imageFailed ? (
+              <img
+                src={wedding.images.checkin}
+                alt=""
+                decoding="async"
+                onError={() => setImageFailed(true)}
+              />
+            ) : (
+              <>
+                <span className="checkin-visual-word">相聚</span>
+                <span className="checkin-visual-caption">诚邀 · 相见</span>
+              </>
+            )}
           </div>
           {!resultState && (
             <div className="checkin-welcome">

@@ -1,3 +1,4 @@
+import type { DisplayFormat, MediaOutputInfo } from '@shared/media';
 import type {
   ReviewGuestRow,
   ReviewGuestStatus,
@@ -151,7 +152,10 @@ export const api = {
       apiFetch<CheckinDTO>(`/api/checkins/${id}/confirm`, { method: 'PATCH', body: JSON.stringify(data) }),
     correctAttendance: (id: number, data: { actualHeadcount: number; actualChildrenCount: number; expectedHeadcount: number | null; expectedChildrenCount: number | null; reason: string }) =>
       apiFetch<CheckinDTO>(`/api/checkins/${id}/attendance`, { method: 'PATCH', body: JSON.stringify(data) }),
-    qrUrl: () => '/api/checkin/qr',
+    qrUrl: (download = false) => `/api/checkin/qr${download ? '?download=1' : ''}`,
+    materials: () => apiFetch<MediaOutputInfo>('/api/checkin/materials'),
+    displayUrl: (format: DisplayFormat, download = false) =>
+      `/api/checkin/display?format=${format}${download ? '&download=1' : ''}`,
   },
 
   gifts: {

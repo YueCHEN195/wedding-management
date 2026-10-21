@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { message } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/api/client';
+import type { MediaFormat } from '@shared/media';
 import { adminFeedback } from '../theme';
 import { requestExport } from './requestExport';
-import type { ExportItem, ExportType } from './exportItems';
+import type { ExportDownloadItem, ExportType } from './exportItems';
 // Give the browser time to consume the attachment URL; also release it on page exit.
 const ATTACHMENT_URL_LIFETIME_MS = 60_000;
 type ExportState = { pending: boolean; error?: string };
 export function useExportsPage() {
+  const mediaInfo = useQuery({ queryKey: ['checkin-materials'], queryFn: api.checkins.materials });
   const [states, setStates] = useState<Partial<Record<ExportType, ExportState>>>({});
   const requests = useRef(new Map<ExportType, AbortController>());
   const attachments = useRef(new Map<string, number>());
@@ -23,7 +27,7 @@ export function useExportsPage() {
       activeAttachments.clear();
     };
   }, []);
-  const download = async (item: ExportItem) => {
+  const download = async (item: ExportDownloadItem) => {
     if (requests.current.has(item.type)) return;
     const controller = new AbortController();
     requests.current.set(item.type, controller);
@@ -64,6 +68,8 @@ export function useExportsPage() {
       if (requests.current.get(item.type) === controller) requests.current.delete(item.type);
     }
   };
-  return { states, download };
+  const mediaPreviewUrl = (format: MediaFormat) =>
+    format === 'qr' ? api.checkins.qrUrl() : api.checkins.displayUrl(format);
+  return { states, download, mediaInfo, mediaPreviewUrl };
 }
 export type ExportsModel = ReturnType<typeof useExportsPage>;

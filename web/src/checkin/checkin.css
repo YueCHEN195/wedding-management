@@ -2,7 +2,9 @@
   /* Check-in layout geometry is local, not a new application-wide standard. */
   --checkin-sheet-width: 420px;
   --checkin-visual-height: 184px;
-  --checkin-visual-compact: 88px;
+  --checkin-image-position: 50% 27%;
+  --checkin-image-compact-position: 50% 22%;
+  --checkin-visual-compact: 128px;
   --checkin-visual-font: 40px;
   --checkin-status-size: 40px;
   --checkin-spinner-size: 16px;
@@ -61,6 +63,17 @@
   gap: var(--guest-space-3);
   margin-block: var(--guest-space-6);
   overflow: hidden;
+}
+
+.guest-checkin .checkin-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--checkin-image-position);
+}
+
+.guest-checkin [data-result='true'] .checkin-visual img {
+  object-position: var(--checkin-image-compact-position);
 }
 
 .guest-checkin .checkin-visual-word {

@@ -1,59 +1,44 @@
-import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { wedding } from '@shared/wedding';
-import { RED, GOLD, PAPER } from './invitationStyles';
+import { weddingDisplay } from './invitationFormat';
+
 export function InviteCover({ onOpen }: { onOpen: () => void }) {
+  const [imageFailed, setImageFailed] = useState(false);
   return (
-    <>
-      {' '}
-      {/* 封面 */}
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          textAlign: 'center',
-          padding: 24,
-          position: 'relative',
-          backgroundImage: `url(${wedding.images.cover})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundColor: RED,
-        }}
-      >
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(94,16,16,0.55)' }} />
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1 }}
-          style={{ position: 'relative', zIndex: 1 }}
-        >
-          <div style={{ fontSize: 96, color: GOLD, lineHeight: 1 }}>囍</div>
-          <h1 style={{ color: PAPER, fontSize: 30, margin: '18px 0 6px', letterSpacing: 6 }}>
-            {wedding.groomName} &amp; {wedding.brideName}
-          </h1>
-          <div style={{ color: GOLD, letterSpacing: 3 }}>
-            {new Date(wedding.date).toLocaleDateString('zh-CN')}
-          </div>
-          <div style={{ height: 40 }} />
-          <button
-            onClick={onOpen}
-            style={{
-              background: 'transparent',
-              border: `1px solid ${GOLD}`,
-              color: GOLD,
-              padding: '10px 28px',
-              borderRadius: 999,
-              fontSize: 16,
-              letterSpacing: 4,
-              cursor: 'pointer',
-            }}
-          >
-            打开请柬
-          </button>
-        </motion.div>
+    <section className="invite-cover" aria-label="请柬封面">
+      <div className="invite-cover-visual" aria-hidden="true">
+        {wedding.images.cover && !imageFailed ? (
+          <img src={wedding.images.cover} alt="" onError={() => setImageFailed(true)} />
+        ) : (
+          <span className="invite-placeholder">相聚</span>
+        )}
       </div>
-    </>
+      <div className="invite-cover-shade" aria-hidden="true" />
+      <p className="guest-brand invite-cover-brand">
+        <span className="guest-brand-mark" aria-hidden="true" />
+        诚邀 · 相聚
+      </p>
+      <div className="invite-cover-copy">
+        <p className="invite-eyebrow">THE WEDDING</p>
+        <h1>{wedding.coverTitle}</h1>
+        <p className="invite-couple">
+          {wedding.groomName}
+          <span>与</span>
+          {wedding.brideName}
+        </p>
+      </div>
+      <footer className="invite-cover-footer">
+        <p>
+          <time dateTime={wedding.date}>{weddingDisplay.date}</time>
+          <span>
+            {weddingDisplay.weekday} · {weddingDisplay.opening} 开席
+          </span>
+        </p>
+        <button onClick={onOpen} type="button" className="invite-open">
+          打开请柬<span aria-hidden="true">↓</span>
+        </button>
+        <p className="invite-swipe">或下滑，赴这场相聚</p>
+      </footer>
+    </section>
   );
 }

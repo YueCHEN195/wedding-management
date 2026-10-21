@@ -1,189 +1,164 @@
-import { MAX_HEADCOUNT, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
-import type { Attending } from '@shared/types';
+import { useEffect, useRef } from 'react';
+import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
+import { wedding } from '@shared/wedding';
 import type { InvitationModel } from './useInvitation';
-import { RED, PAPER, sectionStyle, titleStyle, cardStyle, stepBtn } from './invitationStyles';
-export function RsvpForm({ model }: { model: InvitationModel }) {
+import { RsvpAttendance } from './RsvpAttendance.view';
+import { RsvpReceipt } from './RsvpReceipt.view';
+import { RSVP_FORM_ID, rsvpSubmitLabel } from './rsvpPresentation';
+import './rsvp.css';
+
+export function RsvpForm({
+  model,
+  onBack,
+  showReceipt,
+  onEdit,
+}: {
+  model: InvitationModel;
+  onBack: () => void;
+  showReceipt: boolean;
+  onEdit: () => void;
+}) {
   const {
     universal,
     guestName,
     nameInput,
     setNameInput,
-    attending,
-    setAttending,
-    headcount,
-    setHeadcount,
-    children,
-    setChildren,
     message,
     setMessage,
     submit,
     saving,
     submitted,
+    submitError,
+    nameError,
+    savedReply,
   } = model;
+  const formRef = useRef<HTMLFormElement>(null);
+  const resultRef = useRef<HTMLElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const hadReceipt = useRef(false);
+  const showNameError = nameError && !nameInput.trim();
+
+  useEffect(() => {
+    const target = showReceipt ? resultRef.current : hadReceipt.current ? formRef.current : null;
+    if (target) {
+      target.scrollIntoView({
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+        block: 'start',
+      });
+      if (showReceipt) resultRef.current?.focus({ preventScroll: true });
+      else
+        formRef.current
+          ?.querySelector<HTMLElement>('[name="guest"], input:checked')
+          ?.focus({ preventScroll: true });
+    }
+    hadReceipt.current = showReceipt;
+  }, [showReceipt]);
+
+  useEffect(() => {
+    if (!submitError) return;
+    errorRef.current?.scrollIntoView({ block: 'nearest' });
+    errorRef.current?.focus({ preventScroll: true });
+  }, [submitError]);
+
+  if (showReceipt && savedReply)
+    return <RsvpReceipt reply={savedReply} onEdit={onEdit} onBack={onBack} resultRef={resultRef} />;
+
   return (
-    <>
-      {/* 回执 */}
-      <div style={sectionStyle}>
-        <div style={titleStyle}>— 出席回执 —</div>
-        <div style={cardStyle}>
-          {universal && !guestName && (
-            <div style={{ marginBottom: 16 }}>
-              <label htmlFor="rsvp-name" style={{ display: 'block', marginBottom: 6 }}>
-                您的姓名
-              </label>
-              <input
-                id="rsvp-name"
-                maxLength={MAX_NAME_LENGTH}
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="请输入姓名"
-                style={{
-                  width: '100%',
-                  padding: 10,
-                  borderRadius: 8,
-                  border: '1px solid #ddd',
-                  fontSize: 16,
-                }}
-              />
-              <p style={{ marginBottom: 0, color: '#666', fontSize: 14 }}>
-                本浏览器会记住您的回执，方便下次修改；换设备请联系新人协助。
-              </p>
-            </div>
-          )}
-
-          <label style={{ display: 'block', marginBottom: 8 }}>是否出席</label>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {(['yes', 'no', 'maybe'] as Attending[]).map((v) => {
-              const label = v === 'yes' ? '出席' : v === 'no' ? '不出席' : '待定';
-              const active = attending === v;
-              return (
-                <button
-                  key={v}
-                  onClick={() => setAttending(v)}
-                  style={{
-                    flex: 1,
-                    padding: '10px 0',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    border: `1px solid ${active ? RED : '#ddd'}`,
-                    background: active ? RED : '#fff',
-                    color: active ? PAPER : '#333',
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {attending === 'yes' && (
-            <>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                }}
-              >
-                <span>出席人数（含本人）</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <button
-                    onClick={() => {
-                      setHeadcount((n) => Math.max(1, n - 1));
-                      setChildren((n) => Math.min(n, Math.max(1, headcount - 1)));
-                    }}
-                    style={stepBtn}
-                    aria-label="减少出席人数"
-                  >
-                    -
-                  </button>
-                  <span style={{ minWidth: 24, textAlign: 'center', fontSize: 18 }}>
-                    {headcount}
-                  </span>
-                  <button
-                    onClick={() => setHeadcount((n) => Math.min(MAX_HEADCOUNT, n + 1))}
-                    style={stepBtn}
-                    aria-label="增加出席人数"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                }}
-              >
-                <span>随行儿童</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <button
-                    onClick={() => setChildren((n) => Math.max(0, n - 1))}
-                    style={stepBtn}
-                    aria-label="减少儿童人数"
-                  >
-                    -
-                  </button>
-                  <span style={{ minWidth: 24, textAlign: 'center', fontSize: 18 }}>
-                    {children}
-                  </span>
-                  <button
-                    onClick={() => setChildren((n) => Math.min(headcount, n + 1))}
-                    style={stepBtn}
-                    aria-label="增加儿童人数"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          <label style={{ display: 'block', margin: '8px 0' }}>祝福留言</label>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={3}
-            maxLength={MAX_TEXT_LENGTH}
-            placeholder="写下您的祝福…"
-            style={{
-              width: '100%',
-              padding: 10,
-              borderRadius: 8,
-              border: '1px solid #ddd',
-              fontSize: 15,
-              resize: 'vertical',
-            }}
-          />
-
-          <button
-            onClick={submit}
+    <form
+      className="rsvp-form"
+      id={RSVP_FORM_ID}
+      ref={formRef}
+      noValidate
+      aria-busy={saving}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (universal && !nameInput.trim())
+          formRef.current?.querySelector<HTMLInputElement>('[name="guest"]')?.focus();
+        void submit();
+      }}
+    >
+      <header className="rsvp-heading">
+        <button className="invite-text-button rsvp-back" type="button" onClick={onBack}>
+          ← 返回请柬
+        </button>
+        <p className="guest-brand">
+          <span className="guest-brand-mark" aria-hidden="true" />
+          {wedding.groomName}与{wedding.brideName}的婚礼
+        </p>
+        <h3>{submitted ? '修改你的回音' : '期待与你相见'}</h3>
+        <p className="rsvp-helper">
+          {submitted
+            ? '已带入此前保存的内容，修改后请重新保存。'
+            : '留一声回音，便于我们安排席位。'}
+        </p>
+      </header>
+      {universal && !guestName ? (
+        <div className="rsvp-field">
+          <label htmlFor="rsvp-name">您的姓名</label>
+          <input
+            id="rsvp-name"
+            name="guest"
+            type="text"
+            value={nameInput}
+            maxLength={MAX_NAME_LENGTH}
+            required
+            autoComplete="name"
+            placeholder="请输入本人姓名"
             disabled={saving}
-            style={{
-              marginTop: 16,
-              width: '100%',
-              background: RED,
-              color: PAPER,
-              border: 'none',
-              padding: '12px 0',
-              borderRadius: 8,
-              fontSize: 16,
-              letterSpacing: 2,
-              cursor: 'pointer',
+            onChange={(event) => setNameInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault();
             }}
-          >
-            {saving ? '提交中…' : submitted ? '更新回执' : '提交回执'}
-          </button>
-          {submitted && (
-            <p style={{ textAlign: 'center', color: '#2e7d32', marginTop: 10 }}>
-              已收到，可再次修改
+            aria-invalid={showNameError || undefined}
+            aria-describedby={
+              showNameError ? 'rsvp-name-error rsvp-edit-helper' : 'rsvp-edit-helper'
+            }
+          />
+          {showNameError && (
+            <p className="rsvp-error" id="rsvp-name-error" role="alert">
+              请填写您的姓名，方便我们核对。
             </p>
           )}
+          <p className="rsvp-helper" id="rsvp-edit-helper">
+            本浏览器可再次修改；换设备请联系新人协助。
+          </p>
         </div>
+      ) : (
+        <p className="rsvp-identity">
+          受邀宾客<span>{guestName ?? '姓名未记录'}</span>
+        </p>
+      )}
+      <RsvpAttendance model={model} />
+      <div className="rsvp-field">
+        <label htmlFor="rsvp-message">
+          祝福留言<span className="rsvp-optional">选填</span>
+        </label>
+        <textarea
+          id="rsvp-message"
+          name="message"
+          rows={2}
+          maxLength={MAX_TEXT_LENGTH}
+          value={message}
+          placeholder="写下一句祝福…"
+          disabled={saving}
+          onChange={(event) => setMessage(event.target.value)}
+        />
       </div>
-    </>
+      {submitError && (
+        <div className="rsvp-submit-error" role="alert" tabIndex={-1} ref={errorRef}>
+          <p>{submitError}</p>
+          <p className="rsvp-helper">
+            填写内容仍在当前页面，请按上方提示处理。关闭页面或换设备可能丢失未保存内容。
+          </p>
+        </div>
+      )}
+      <button className="invite-primary rsvp-submit" type="submit" disabled={saving}>
+        {rsvpSubmitLabel(model)}
+        <span aria-hidden="true">{saving ? '' : '↗'}</span>
+      </button>
+      <p className="rsvp-helper rsvp-saving" role="status">
+        {saving ? '正在发送回执，请稍候。' : ''}
+      </p>
+    </form>
   );
 }

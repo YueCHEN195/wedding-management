@@ -1,4 +1,45 @@
 /* Export-only composition. Shared header, native buttons and Collapse inherit the admin theme. */
+.export-media-preview {
+  --export-media-preview-height: calc(100dvh - var(--space-6) * 6);
+}
+.export-media {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: var(--line-width) solid var(--admin-divider);
+}
+.export-media > h2 {
+  margin: 0;
+  font-size: var(--font-heading);
+  font-weight: var(--export-emphasis-weight);
+}
+.export-media-row h3 {
+  margin: 0;
+  font-size: var(--font-section);
+  font-weight: var(--export-emphasis-weight);
+}
+.export-media > p,
+.export-media-row p {
+  color: var(--admin-secondary);
+  margin-block: var(--space-2) var(--space-4);
+}
+.export-media .ant-alert,
+.export-media-url {
+  margin-top: var(--space-4);
+}
+.export-media-url {
+  overflow-wrap: anywhere;
+}
+.export-media-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: center;
+  padding-block: var(--space-6);
+}
+.export-media-row > .ant-alert {
+  flex-basis: 100%;
+}
 .export-page {
   --export-content-columns: minmax(0, 0.7fr) minmax(0, 1.3fr) auto;
   --export-field-columns: repeat(4, minmax(0, 1fr));

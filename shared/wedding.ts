@@ -1,39 +1,33 @@
-/**
- * 婚礼信息（写死在代码中，作为 demo 占位，后续由新人替换真实内容）
- */
+/** Confirmed wedding details and user-authorized, metadata-stripped display assets. */
 export const wedding = {
-  groomName: '张伟',
-  brideName: '李娜',
-  /** ISO 时间，带时区 */
-  date: '2026-12-20T18:00:00+08:00',
+  groomName: '陈玥',
+  brideName: '杨涵茹',
+  /** ISO time with the wedding's local timezone. */
+  date: '2026-11-22T12:08:00+08:00',
   venue: {
-    name: '示例酒店',
-    hall: '宴会厅',
-    address: '示例省示例市示例区示例路 1 号',
+    name: '徐记海鲜（滨江新城店）',
+    hall: '厅位待确认',
+    address: '湖南省长沙市岳麓区含光路当代滨江十号栋',
     lat: 0,
     lng: 0,
   },
-  contact: {
-    name: '联系人',
-    phone: '13800000000',
-  },
-  coverTitle: '诚挚邀请',
-  invitationText: '诚挚邀请您见证我们的幸福时刻',
-  closingText: '届时恭候您的光临',
-  story: '这里是一段新人故事（demo 占位）。',
-  schedule: [
-    { time: '17:00', title: '迎宾' },
-    { time: '18:00', title: '仪式' },
-    { time: '18:30', title: '晚宴' },
-  ],
+  contact: { name: '', phone: '' },
+  coverTitle: '良辰有你。',
+  invitationText: '这一天的喜悦，想与你一同珍藏。',
+  closingText: '期待与你，一同见证这一刻。',
+  story: '',
+  schedule: [{ time: '12:08', title: '开席' }],
   images: {
-    cover: '/assets/cover.svg',
-    gallery: ['/assets/gallery-1.svg'],
+    cover: '/assets/wedding/invite-cover.webp',
+    checkin: '/assets/wedding/couple-portrait.webp',
+    detail: '/assets/wedding/night-sparklers.webp',
+    gallery: ['/assets/wedding/couple-portrait.webp', '/assets/wedding/night-sparklers.webp'],
   },
-  poster: {
-    base: '/assets/poster.svg',
-    /** 二维码在底图上的位置与大小（像素） */
-    qr: { x: 380, y: 1560, size: 300 },
+  // Output compositions have their own approved photo bindings; page imagery can change independently.
+  outputImages: {
+    share: '/assets/wedding/couple-portrait.webp',
+    sign: '/assets/wedding/couple-portrait.webp',
+    table: '/assets/wedding/night-sparklers.webp',
   },
 } as const;
 

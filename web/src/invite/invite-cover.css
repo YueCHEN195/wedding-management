@@ -1,0 +1,183 @@
+.guest-invite .invite-cover {
+  --invite-aperture-duration: 1500ms;
+  --invite-photo-duration: 2400ms;
+  --invite-light-duration: 1800ms;
+  --invite-cover-title: 30px;
+  --invite-cover-image-position: 50% 42%;
+  --invite-intro-title-delay: 500ms;
+  --invite-intro-name-delay: 700ms;
+  --invite-intro-brand-delay: 400ms;
+  --invite-copy-duration: 900ms;
+  --invite-cover-letter-spacing: 0.08em;
+  --invite-cover-placeholder-size: 80px;
+  --invite-cover-placeholder-opacity: 0.12;
+  --invite-cover-shade: linear-gradient(180deg, transparent 35%, rgb(15 20 16 / 0.82));
+  --invite-cover-light: rgb(255 240 209 / 0.14);
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--guest-space-8);
+  background: var(--guest-night);
+  color: var(--guest-night-text);
+  overflow: hidden;
+  isolation: isolate;
+}
+.guest-invite .invite-cover-visual,
+.guest-invite .invite-cover-shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.guest-invite .invite-cover-visual {
+  display: grid;
+  place-items: center;
+  animation: invite-aperture var(--invite-aperture-duration) var(--guest-ease) both;
+}
+.guest-invite .invite-cover-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--invite-cover-image-position);
+  animation: invite-photo var(--invite-photo-duration) var(--guest-ease) both;
+}
+.guest-invite .invite-placeholder {
+  font: 300 var(--invite-cover-placeholder-size) / var(--guest-font-title-line)
+    var(--guest-font-book);
+  color: var(--guest-night-text);
+  opacity: var(--invite-cover-placeholder-opacity);
+  letter-spacing: var(--invite-cover-letter-spacing);
+}
+.guest-invite .invite-cover-shade {
+  background: var(--invite-cover-shade);
+}
+.guest-invite .invite-cover-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, var(--invite-cover-light), transparent 65%);
+  animation: invite-light var(--invite-light-duration) var(--guest-ease) both;
+  pointer-events: none;
+}
+.guest-invite .invite-cover-brand {
+  font-size: var(--guest-font-eyebrow);
+  color: var(--guest-night-text);
+  letter-spacing: var(--invite-cover-letter-spacing);
+  animation: invite-copy var(--invite-copy-duration) var(--guest-ease)
+    var(--invite-intro-brand-delay) both;
+}
+.guest-invite .invite-cover-copy .invite-eyebrow {
+  color: var(--guest-night-muted);
+}
+.guest-invite .invite-cover-copy {
+  margin-top: auto;
+  padding-top: var(--guest-space-10);
+}
+.guest-invite .invite-cover-copy h1 {
+  font-size: var(--invite-cover-title);
+  margin-block: var(--guest-space-4) var(--guest-space-2);
+  letter-spacing: var(--invite-cover-letter-spacing);
+  animation: invite-copy var(--invite-copy-duration) var(--guest-ease)
+    var(--invite-intro-title-delay) both;
+}
+.guest-invite .invite-couple {
+  font: 300 var(--guest-font-name) / var(--guest-font-line) var(--guest-font-book);
+  animation: invite-copy var(--invite-copy-duration) var(--guest-ease)
+    var(--invite-intro-name-delay) both;
+}
+.guest-invite .invite-couple span {
+  font: var(--guest-font-small) var(--guest-font-ui);
+  margin-inline: var(--guest-space-4);
+  color: var(--guest-night-muted);
+}
+.guest-invite .invite-cover-footer {
+  margin-top: var(--guest-space-10);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.guest-invite .invite-cover-footer > p:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--guest-space-2);
+  font-size: var(--guest-font-small);
+  color: var(--guest-night-muted);
+}
+.guest-invite .invite-open {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--guest-space-1);
+  margin-top: var(--guest-space-6);
+  min-height: var(--guest-control-height);
+  border: 0;
+  background: transparent;
+  color: var(--guest-night-muted);
+  font-size: var(--guest-font-small);
+  letter-spacing: var(--invite-cover-letter-spacing);
+}
+.guest-invite .invite-open:hover {
+  color: var(--guest-night-text);
+}
+.guest-invite .invite-open:focus-visible {
+  outline-color: var(--guest-night-text);
+}
+.guest-invite .invite-swipe {
+  text-align: center;
+  color: var(--guest-night-muted);
+  font-size: var(--guest-font-small);
+  margin-top: var(--guest-space-2);
+}
+@keyframes invite-aperture {
+  from {
+    clip-path: inset(0 46%);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes invite-photo {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes invite-light {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+@keyframes invite-copy {
+  from {
+    opacity: 0;
+    transform: translateY(var(--guest-space-2));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .guest-invite .invite-cover-visual,
+  .guest-invite .invite-cover-visual img,
+  .guest-invite .invite-cover-copy h1,
+  .guest-invite .invite-couple,
+  .guest-invite .invite-cover-brand,
+  .guest-invite .invite-cover-visual::after {
+    animation: none;
+  }
+  .guest-invite .invite-cover-visual::after {
+    display: none;
+  }
+}

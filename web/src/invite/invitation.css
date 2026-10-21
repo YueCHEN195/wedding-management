@@ -1,0 +1,351 @@
+@import './invite-cover.css';
+.guest-invite {
+  --invite-document-width: 640px;
+  --invite-eyebrow-spacing: 0.12em;
+  /* Preserve the study's landscape photo frame as the viewport changes. */
+  --invite-detail-photo-ratio: 5 / 3;
+  min-height: 100vh;
+  background: var(--guest-canvas);
+}
+.guest-invite *,
+.invite-map * {
+  box-sizing: border-box;
+}
+.guest-invite p,
+.guest-invite h1,
+.guest-invite h2 {
+  margin: 0;
+}
+.guest-invite h1,
+.guest-invite h2 {
+  font: 300 var(--guest-font-title) / var(--guest-font-title-line) var(--guest-font-book);
+}
+.guest-invite button,
+.invite-map button {
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+.guest-invite button:focus-visible,
+.guest-invite summary:focus-visible,
+.guest-invite a:focus-visible,
+.guest-invite input:focus-visible,
+.invite-map button:focus-visible,
+.invite-map a:focus-visible {
+  outline: var(--guest-focus-width) solid var(--guest-action);
+  outline-offset: var(--guest-space-1);
+}
+.guest-invite .invite-document {
+  max-width: var(--invite-document-width);
+  margin: auto;
+  background: var(--guest-paper);
+}
+.guest-invite .invite-eyebrow {
+  font-size: var(--guest-font-eyebrow);
+  letter-spacing: var(--invite-eyebrow-spacing);
+}
+.guest-invite .invite-state {
+  max-width: var(--invite-document-width);
+  margin: auto;
+  min-height: 100svh;
+  padding: var(--guest-space-10) var(--guest-space-6);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--guest-space-6);
+  background: var(--guest-paper);
+}
+.guest-invite .invite-content {
+  padding: var(--guest-space-10) var(--guest-space-6);
+  min-width: 0;
+}
+.guest-invite .invite-content:focus {
+  outline: none;
+}
+.guest-invite .invite-content > h2 {
+  font-size: var(--guest-font-section);
+  margin-top: var(--guest-space-6);
+  overflow-wrap: anywhere;
+}
+.guest-invite .invite-letter {
+  margin-top: var(--guest-space-6);
+  line-height: 2;
+  white-space: pre-line;
+}
+.guest-invite .invite-detail-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--invite-detail-photo-ratio);
+  object-fit: cover;
+  border-radius: var(--guest-radius-photo);
+  margin-top: var(--guest-space-6);
+}
+.guest-invite .invite-event {
+  margin-block: var(--guest-space-6);
+}
+.guest-invite .invite-opening {
+  font: inherit;
+  margin-top: var(--guest-space-2);
+}
+.guest-invite .invite-venue {
+  margin-top: var(--guest-space-4);
+  display: flex;
+  align-items: start;
+  gap: var(--guest-space-4);
+}
+.guest-invite .invite-venue > div {
+  flex: 1;
+  min-width: 0;
+}
+.guest-invite .invite-helper {
+  font-size: var(--guest-font-small);
+  color: var(--guest-muted);
+  margin-top: var(--guest-space-2);
+  overflow-wrap: anywhere;
+}
+.guest-invite .invite-arrival {
+  font-size: var(--guest-font-small);
+  color: var(--guest-muted);
+  margin-block: var(--guest-space-6);
+}
+.guest-invite .invite-back-cover {
+  width: 100%;
+  margin-top: var(--guest-space-2);
+  font-size: var(--guest-font-small);
+}
+.guest-invite .invite-primary {
+  min-height: var(--guest-control-height);
+  width: 100%;
+  border: 0;
+  border-radius: var(--guest-radius-control);
+  background: var(--guest-action);
+  color: var(--guest-paper);
+  padding: var(--guest-space-3) var(--guest-space-4);
+  font: inherit;
+}
+.guest-invite .invite-primary > span {
+  float: right;
+}
+.guest-invite .invite-primary:hover {
+  background: var(--guest-action-hover);
+}
+.guest-invite .invite-primary:active {
+  background: var(--guest-action-active);
+}
+.guest-invite .invite-mobile-action-root {
+  display: none;
+}
+.guest-invite .invite-mobile-actions button:disabled {
+  opacity: var(--guest-disabled-opacity);
+  cursor: default;
+}
+.guest-invite .invite-navigation {
+  flex-shrink: 0;
+  min-height: var(--guest-control-height);
+  padding: var(--guest-space-3) var(--guest-space-4);
+  border: 0;
+  border-radius: var(--guest-radius-control);
+  background: var(--guest-soft);
+  color: var(--guest-action);
+  font-size: var(--guest-font-body);
+}
+.guest-invite .invite-navigation:hover {
+  background: var(--guest-border);
+}
+.guest-invite .invite-extras,
+.guest-invite .invite-reply {
+  border-bottom: var(--guest-line-width) solid var(--guest-border);
+  margin-top: var(--guest-space-6);
+}
+.guest-invite summary {
+  min-height: var(--guest-control-height);
+  padding-block: var(--guest-space-3);
+  cursor: pointer;
+}
+.guest-invite .invite-extra-body {
+  padding-bottom: var(--guest-space-6);
+}
+.guest-invite .invite-gallery {
+  display: grid;
+  gap: var(--guest-space-4);
+  margin-top: var(--guest-space-6);
+}
+.guest-invite .invite-gallery img {
+  width: 100%;
+  border-radius: var(--guest-radius-photo);
+}
+.guest-invite .invite-actions {
+  padding-top: var(--guest-space-10);
+  color: var(--guest-muted);
+  text-align: center;
+}
+.guest-invite .invite-signature {
+  margin-block: var(--guest-space-4);
+}
+.guest-invite .invite-actions a,
+.guest-invite .invite-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--guest-control-height);
+  border: 0;
+  background: transparent;
+  color: var(--guest-action);
+  padding: var(--guest-space-3) var(--guest-space-4);
+  font-size: var(--guest-font-body);
+  text-decoration: underline;
+  text-underline-offset: var(--guest-space-1);
+}
+.guest-invite .invite-toast {
+  position: fixed;
+  inset: auto var(--guest-space-6) var(--guest-space-6);
+  width: fit-content;
+  max-width: calc(100% - var(--guest-space-6) * 2);
+  margin: auto;
+  padding: var(--guest-space-3) var(--guest-space-6);
+  border-radius: var(--guest-radius-control);
+  background: var(--guest-night);
+  color: var(--guest-night-text);
+}
+.guest-invite .invite-share-error {
+  margin-top: var(--guest-space-4);
+  color: var(--guest-error);
+  overflow-wrap: anywhere;
+}
+.guest-invite .invite-share-error input {
+  margin-top: var(--guest-space-3);
+  max-width: 100%;
+  width: 100%;
+  padding: var(--guest-space-3);
+  border: var(--guest-line-width) solid var(--guest-border);
+  border-radius: var(--guest-radius-control);
+  background: var(--guest-field);
+  color: var(--guest-ink);
+  font-size: var(--guest-font-input);
+}
+.invite-map {
+  --invite-map-width: 400px;
+  --invite-map-overlay: rgb(16 22 17 / 0.44);
+  width: min(var(--invite-map-width), calc(100% - var(--guest-space-8)));
+  max-height: calc(100svh - var(--guest-space-8));
+  overflow: auto;
+  position: fixed;
+  inset: auto 0 var(--guest-space-6);
+  margin: auto;
+  padding: var(--guest-space-6);
+  border: 0;
+  border-radius: var(--guest-radius-surface);
+  background: var(--guest-paper);
+  color: var(--guest-ink);
+}
+.invite-map::backdrop {
+  background: var(--invite-map-overlay);
+}
+.invite-map header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--guest-space-4);
+}
+.invite-map h2 {
+  margin: 0;
+  font: 300 var(--guest-font-name) / var(--guest-font-title-line) var(--guest-font-book);
+}
+.invite-map header button {
+  min-height: var(--guest-control-height);
+  border: 0;
+  background: transparent;
+  color: var(--guest-muted);
+  padding: var(--guest-space-3);
+}
+.invite-map h3 {
+  font-size: var(--guest-font-body);
+  font-weight: 400;
+  margin-block: var(--guest-space-6) var(--guest-space-2);
+}
+.invite-map p {
+  margin: 0;
+  color: var(--guest-muted);
+}
+.invite-map-options {
+  display: grid;
+  gap: var(--guest-space-3);
+  margin-block: var(--guest-space-6);
+}
+.invite-map-options a {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--guest-space-3);
+  align-items: center;
+  min-height: var(--guest-control-height);
+  padding: var(--guest-space-3) var(--guest-space-4);
+  background: var(--guest-soft);
+  border-radius: var(--guest-radius-control);
+  color: var(--guest-action);
+  text-decoration: none;
+}
+.invite-map-options a:hover {
+  background: var(--guest-border);
+}
+.invite-map-options span,
+.invite-map-helper {
+  font-size: var(--guest-font-small);
+}
+/* Fixed breakpoint matches the first guest pilot; native media queries cannot consume custom properties. */
+@media (max-width: 600px) {
+  .invite-map {
+    width: 100%;
+    inset: auto 0 0;
+    max-height: 85svh;
+    border-radius: var(--guest-radius-surface) var(--guest-radius-surface) 0 0;
+    padding-bottom: max(var(--guest-space-6), env(safe-area-inset-bottom));
+  }
+}
+/* Guest mobile breakpoint, plus short phone landscape windows. CSS media
+   conditions cannot reference tokens; 960px caps the landscape exception. */
+@media (max-width: 600px), (max-width: 960px) and (max-height: 500px) {
+  .guest-invite {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: var(--invite-visible-height, 100dvh);
+    min-height: 0;
+    overflow: hidden;
+  }
+  .guest-invite .invite-scroll {
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--guest-scrollbar-thumb) transparent;
+  }
+  .guest-invite .invite-scroll::-webkit-scrollbar {
+    width: var(--guest-scrollbar-size);
+  }
+  .guest-invite .invite-scroll::-webkit-scrollbar-thumb {
+    background: var(--guest-scrollbar-thumb);
+    border-radius: var(--guest-radius-control);
+  }
+  .guest-invite .invite-mobile-action-root {
+    display: block;
+    background: var(--guest-paper);
+  }
+  .guest-invite .invite-mobile-actions:not([hidden]) {
+    max-width: var(--invite-document-width);
+    margin: auto;
+    padding: var(--guest-space-3) max(var(--guest-space-6), env(safe-area-inset-right))
+      max(var(--guest-space-3), env(safe-area-inset-bottom))
+      max(var(--guest-space-6), env(safe-area-inset-left));
+    border-top: var(--guest-line-width) solid var(--guest-border);
+  }
+  .guest-invite .invite-content {
+    padding-left: max(var(--guest-space-6), env(safe-area-inset-left));
+    padding-right: max(var(--guest-space-6), env(safe-area-inset-right));
+    padding-bottom: max(var(--guest-space-10), env(safe-area-inset-bottom));
+  }
+  .guest-invite[data-actions-ready='true'] .invite-open-inline,
+  .guest-invite[data-actions-ready='true'] .rsvp-submit {
+    display: none;
+  }
+}

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { Attending } from '@shared/types';
+import { useEffect, useRef, useState } from 'react';
+import type { Attending, RsvpDTO } from '@shared/types';
 import { api, ApiError } from '@/api/client';
 export function useInvitation(token?: string) {
   const universal = !token;
@@ -12,6 +12,11 @@ export function useInvitation(token?: string) {
   const [salutation, setSalutation] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState(false);
+  const [savedReply, setSavedReply] = useState<RsvpDTO | null>(null);
+  const [saveVersion, setSaveVersion] = useState(0);
+  const savingRef = useRef(false);
 
   const [nameInput, setNameInput] = useState('');
   const [attending, setAttending] = useState<Attending>('yes');
@@ -29,6 +34,7 @@ export function useInvitation(token?: string) {
         if (!alive) return;
         setGuestName(d.guestName);
         setSalutation(d.salutation);
+        setSavedReply(d.rsvp);
         if (d.rsvp) {
           if (!token) setNameInput(d.rsvp.guestName);
           setAttending(d.rsvp.attending);
@@ -52,11 +58,14 @@ export function useInvitation(token?: string) {
   const greeting = salutation ?? guestName ?? null;
 
   async function submit() {
-    if (saving || loading || loadError) return;
+    if (savingRef.current || loading || loadError || invalid) return;
+    setSubmitError(null);
+    setNameError(false);
     if (universal && !nameInput.trim()) {
-      alert('请填写您的姓名');
+      setNameError(true);
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     try {
       const payload = {
@@ -65,12 +74,16 @@ export function useInvitation(token?: string) {
         childrenCount: attending === 'yes' ? children : 0,
         message,
       };
-      if (token) await api.invite.rsvp(token, payload);
-      else await api.invite.universalRsvp({ ...payload, name: nameInput.trim() });
+      const response = token
+        ? await api.invite.rsvp(token, payload)
+        : await api.invite.universalRsvp({ ...payload, name: nameInput.trim() });
+      setSavedReply(response);
       setSubmitted(true);
+      setSaveVersion((version) => version + 1);
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : '提交失败，请稍后再试');
+      setSubmitError(e instanceof ApiError ? e.message : '提交失败，请稍后再试');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -87,6 +100,10 @@ export function useInvitation(token?: string) {
     setChildren(0);
     setMessage('');
     setSubmitted(false);
+    setSavedReply(null);
+    setSaveVersion(0);
+    setSubmitError(null);
+    setNameError(false);
     setLoadAttempt((n) => n + 1);
   };
   return {
@@ -97,6 +114,10 @@ export function useInvitation(token?: string) {
     guestName,
     submitted,
     saving,
+    submitError,
+    nameError,
+    savedReply,
+    saveVersion,
     nameInput,
     setNameInput,
     attending,

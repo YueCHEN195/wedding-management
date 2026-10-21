@@ -73,4 +73,11 @@ export const EXPORT_ITEMS = [
   },
 ] as const;
 export type ExportItem = (typeof EXPORT_ITEMS)[number];
-export type ExportType = ExportItem['type'];
+export const MEDIA_EXPORT_ITEMS = [
+  { type: 'checkin-table', format: 'table', title: '签到桌牌', filename: '签到桌牌.png' },
+  { type: 'checkin-sign', format: 'sign', title: '入口导视', filename: '入口导视.png' },
+  { type: 'checkin-qr', format: 'qr', title: '签到二维码', filename: '签到二维码.png' },
+] as const;
+export type MediaExportItem = (typeof MEDIA_EXPORT_ITEMS)[number];
+export type ExportDownloadItem = ExportItem | MediaExportItem;
+export type ExportType = ExportDownloadItem['type'];

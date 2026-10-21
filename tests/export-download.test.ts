@@ -2,9 +2,56 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import ExcelJS from 'exceljs';
 import { requestExport } from '../web/src/admin/exports/requestExport';
-import { EXPORT_ITEMS } from '../web/src/admin/exports/exportItems';
+import { EXPORT_ITEMS, MEDIA_EXPORT_ITEMS } from '../web/src/admin/exports/exportItems';
 const MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const item = EXPORT_ITEMS[0];
+
+test('物料复用附件下载，保持PNG字节、服务端预览文件名与凭证', async (t) => {
+  const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+  const signal = new AbortController().signal;
+  t.mock.method(globalThis, 'fetch', (url: string, options: RequestInit) => {
+    assert.equal(url, '/api/checkin/display?format=table&download=1');
+    assert.equal(options.credentials, 'include');
+    assert.equal(options.signal, signal);
+    return Promise.resolve(
+      new Response(bytes, {
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent('签到桌牌-预览.png')}`,
+        },
+      }),
+    );
+  });
+  const result = await requestExport(MEDIA_EXPORT_ITEMS[0], signal);
+  assert.equal(result.filename, '签到桌牌-预览.png');
+  assert.deepEqual(new Uint8Array(await result.blob.arrayBuffer()), bytes);
+});
+
+test('物料错误响应不会作为图片下载，非法附件路径回退本地文件名', async (t) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', () =>
+    Promise.resolve(
+      new Response('<html>登录页</html>', { headers: { 'Content-Type': 'text/html' } }),
+    ),
+  );
+  await assert.rejects(
+    requestExport(MEDIA_EXPORT_ITEMS[0], new AbortController().signal),
+    /未返回 PNG/,
+  );
+  fetchMock.mock.mockImplementation(() =>
+    Promise.resolve(
+      new Response('png', {
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Disposition': "attachment; filename*=UTF-8''..%2Fother.png",
+        },
+      }),
+    ),
+  );
+  assert.equal(
+    (await requestExport(MEDIA_EXPORT_ITEMS[0], new AbortController().signal)).filename,
+    '签到桌牌.png',
+  );
+});
 
 test('附件请求保留凭证与取消信号，中文服务端文件名和工作簿内容不变', async (t) => {
   const workbook = new ExcelJS.Workbook();

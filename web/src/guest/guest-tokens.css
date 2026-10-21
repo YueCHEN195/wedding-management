@@ -32,7 +32,18 @@
   --guest-font-body: 14px;
   --guest-font-input: 16px;
   --guest-font-name: 20px;
-  --guest-font-title: 28px;
+  --guest-font-title: 25px;
+  --guest-font-section: 23px;
+  --guest-font-eyebrow: 10px;
+  /* Paired-petal geometry from the approved study, independent of the cat QR emblem. */
+  --guest-mark-size: 16px;
+  --guest-mark-leaf-width: 9px;
+  --guest-mark-leaf-height: 13px;
+  --guest-mark-offset: 6px;
+  --guest-mark-angle: 26deg;
+  --guest-mark-radius: 70% 40% 70% 40%;
+  --guest-scrollbar-size: 4px;
+  --guest-scrollbar-thumb: rgb(113 111 101 / 0.28);
   --guest-font-line: 1.8;
   --guest-font-title-line: 1.5;
   --guest-font-ui: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -43,4 +54,35 @@
   --guest-disabled-opacity: 0.55;
   font: var(--guest-font-body) / var(--guest-font-line) var(--guest-font-ui);
   color: var(--guest-ink);
+}
+.guest-experience .guest-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--guest-space-2);
+  font-size: var(--guest-font-small);
+  color: var(--guest-muted);
+}
+.guest-experience .guest-brand-mark {
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  width: var(--guest-mark-size);
+  height: var(--guest-mark-size);
+}
+.guest-experience .guest-brand-mark::before,
+.guest-experience .guest-brand-mark::after {
+  content: '';
+  box-sizing: border-box;
+  position: absolute;
+  top: var(--guest-line-width);
+  left: var(--guest-line-width);
+  width: var(--guest-mark-leaf-width);
+  height: var(--guest-mark-leaf-height);
+  border: var(--guest-line-width) solid currentColor;
+  border-radius: var(--guest-mark-radius);
+  transform: rotate(calc(-1 * var(--guest-mark-angle)));
+}
+.guest-experience .guest-brand-mark::after {
+  left: var(--guest-mark-offset);
+  transform: rotate(var(--guest-mark-angle)) scaleX(-1);
 }

@@ -2,6 +2,10 @@ FROM node:24-bookworm
 
 WORKDIR /app
 
+# SVG artwork needs a redistributable CJK font on Linux; do not rely on macOS fonts.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/*
+
 # 启用 pnpm
 RUN corepack enable
 
