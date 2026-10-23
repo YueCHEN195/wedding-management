@@ -1,106 +1,64 @@
 # 婚礼管理应用
 
-自用的轻量婚礼应用，包含三个界面：
+自用的单场婚礼应用：管理宾客和邀请、收集回执、核对到场、登记礼金及导出记录。一期功能开发与本地自动化验收已完成，实体手机、微信和正式部署环境仍需验收。
 
-- **管理后台**（PC）：`/admin` —— 管宾客、发请柬、看回执、看统计、导出
-- **请柬页**（手机）：`/invite/:token` —— 宾客查看请柬、填写回执
-- **自助签到页**（手机）：`/checkin` —— 现场扫码自助签到
+[文档入口](docs/README.md) · [当前业务范围](docs/产品/需求文档.md) · [测试报告](docs/测试/一期测试报告.md)
 
-> 需求、技术方案、审查与逐项验收见 [文档索引](docs/README.md)。
+## 页面与权限
 
-## 技术栈
+| 入口             | 用途                                         |
+| ---------------- | -------------------------------------------- |
+| `/admin`         | 管理后台；工作人员默认进入现场审核           |
+| `/invite/:token` | 专属请柬与回执                               |
+| `/invite`        | 可转发的通用请柬；回执由本浏览器私有凭证编辑 |
+| `/checkin`       | 自助提交姓名，等待现场核对                   |
 
-TypeScript + Node 24 · Hono · SQLite（better-sqlite3 / WAL）· Drizzle ORM · React 19 + Vite 8 · Ant Design 6 · Tailwind CSS · Docker + Caddy
+管理员维护档案、完整回执、统计、导出及账目更正。工作人员可现场核对、确认签到并登记礼金，查看受限宾客资料和单笔礼金；不能读取完整回执、祝福留言、统计与礼金汇总。权限由服务端保证。
 
-## 功能
+姓名不是唯一身份；预计人数与实到独立，实到包含儿童；礼金自愿，不登记不生成零元礼金记录。归档、驳回、撤销、作废与恢复保留数据和操作记录，不提供永久删除入口。
 
-**宾客端（手机）**
-- **请柬页** `/invite/:token`：国风封面（打开动效）、个人化问候、倒计时、婚礼信息与一键导航、流程、相册、回执表单、联系与分享
-- **通用请柬** `/invite`：宾客互转的通用链接，填写回执时自行输入姓名
-- **自助签到** `/checkin`：扫码只填姓名，提交后进入后台待审核
+## 本地启动
 
-**管理后台（PC）**
-- **仪表盘**：关键指标卡 + 回执/礼金/分组图表
-- **宾客管理**：增删改查、Excel 导入导出、搜索筛选、专属链接复制、二维码、海报、批量海报 ZIP、宾客详情
-- **回执管理**：列表 + 统计 + 代填修改
-- **现场审核**：待审核列表（自动刷新）、补录礼金（金额必填可为 0）、确认/驳回、手动补录、现场入口总码
-- **签到记录**：列表与筛选
-- **礼金管理**：流水 +（仅管理员）总额与方式分布 + 增删改
-- **导出**：宾客 / 回执 / 签到 / 礼金 分别导出 Excel
-- **两个账号**：`admin`（全部权限）与 `staff`（仅现场，看不到礼金总额与统计）
+要求 Node >=24、pnpm。首次开发环境初始化：
 
-> 婚礼信息写在 `shared/wedding.ts`；图片等素材目前是 `public/assets/` 下的 **demo 占位（SVG）**，替换为真实素材即可。
-
-## 本地开发
-
-```bash
-# 1. 安装依赖
+```sh
 pnpm install
-
-# 2. 准备环境变量
-copy .env.example .env   # Windows
-# cp .env.example .env   # macOS / Linux
-
-# 3. 初始化数据库（生成迁移 → 执行迁移 → 写入两个账号与 demo 宾客）
-pnpm db:generate
+pnpm lint:setup
+cp .env.example .env
 pnpm db:migrate
 pnpm db:seed
-
-# 4. 启动（并行起后端 3000 与前端 5173）
 pnpm dev
 ```
 
-- 前端：http://localhost:5173
-- 后端：http://localhost:3000
-- 默认账号：`admin` / `admin123`（管理员），`staff` / `staff123`（工作人员）
+Windows 可用 `copy .env.example .env`。已有 `.env` 时不要覆盖；`db:seed` 会写入示例宾客，仅用于开发准备。默认本地账号为 `admin / admin123`、`staff / staff123`，实际以环境配置与已存账号为准；修改环境变量不会更新数据库中的既有密码。
 
-> 修改 `.env` 后，开发环境会自动读取；种子账号在数据库为空时才会创建。
+前端 `http://localhost:5173`，后端 `http://localhost:3000`。婚礼信息与素材路径由 `shared/wedding.ts` 管理，后台没有婚礼配置或照片上传界面。
 
-## 常用脚本
+## 检查与测试
 
-| 命令 | 说明 |
-| --- | --- |
-| `pnpm dev` | 并行启动前后端 |
-| `pnpm build` | 构建前端到 `web/dist` |
-| `pnpm start` | 生产模式启动（需先 `pnpm build`） |
-| `pnpm typecheck` | 类型检查 |
-| `pnpm lint:setup` | 首次安装隔离的ESLint/Prettier依赖（不改变应用TS7） |
-| `pnpm lint` | 全项目ESLint检查，显示历史警告 |
-| `pnpm lint:web` | 全前端严格检查，禁止警告 |
-| `pnpm lint:pilot` | 兼容别名，执行`pnpm lint:web` |
-| `pnpm lint:test` | 验证分层与Hooks规则实际生效 |
-| `pnpm check` | ESLint、全前端严格检查、规则测试、类型检查、测试、构建 |
-| `pnpm format <文件或目录>` | 使用Prettier格式化指定范围 |
-| `pnpm format:check <文件或目录>` | 检查指定范围的格式 |
-| `pnpm db:generate` | 依据 schema 生成迁移 |
-| `pnpm db:migrate` | 执行迁移 |
-| `pnpm db:seed` | 写入账号与 demo 数据 |
-
-## 目录结构
-
-代码分层、规则取舍与历史警告见 [代码质量规范](docs/技术/代码质量规范.md)。新环境在`pnpm install`后执行一次`pnpm lint:setup`；依赖更新提交`tooling/eslint/pnpm-lock.yaml`。
-
-```
-server/    Hono 后端（路由、鉴权、数据库）
-web/       React 前端（admin / invite / checkin）
-shared/    前后端共享类型与婚礼配置
-public/    静态资源（海报底图、图片，demo 占位）
-data/      SQLite 数据文件（git 忽略）
-docs/      产品 / 技术 / 评审 / 问题整改（含验收截图）
+```sh
+pnpm check
+pnpm test:e2e:setup
+pnpm --dir tooling/e2e exec playwright install chromium
+pnpm test:e2e
 ```
 
-## 部署（腾讯云 · 中国香港）
+本机已有 Chrome 时可用 `E2E_BROWSER_CHANNEL=chrome pnpm test:e2e`。业务测试与浏览器验收使用独立临时库；浏览器结果写入被git忽略的 `test-results/`。
 
-```bash
-# 服务器上
-cp .env.example .env
-# 编辑 .env：填写域名、JWT_SECRET、两个账号密码、PUBLIC_BASE_URL
-docker compose up -d --build
+完整命令、独立验收环境及Vite缓存说明见[本地开发与验收](docs/技术/本地开发与验收.md)，分层和检查要求见[代码质量规范](docs/技术/代码质量规范.md)。
+
+## 工程与部署
+
+TypeScript 7、Node 24、Hono、SQLite/WAL、Drizzle、React 19、Vite 8、Ant Design 6。后端统一提供API，生产模式同时托管 `web/dist`；Docker Compose包含应用与Caddy，数据挂载到 `data/`。
+
+```text
+server/    API、认证、业务事务、数据库迁移、文件输出
+web/       后台、请柬、自助签到
+shared/    DTO、校验边界、数值解析、婚礼与物料配置
+public/    网站静态资源，含已授权的婚纱照展示副本
+tests/     业务回归与浏览器验收
+tooling/   隔离的ESLint/Prettier及Playwright依赖
+docs/      当前说明、测试记录、历史归档
 ```
 
-Caddy 会自动签发 HTTPS 证书。详见 [技术设计](docs/技术/技术设计.md) 第 8.5 节。
-
-## 说明
-
-- 婚礼信息写死在 `shared/wedding.ts`，图片等素材先用 demo 占位，后续替换。
-- 后台两个账号：管理员（全部权限）与工作人员（仅现场，看不到礼金总额与统计）。
+部署前阅读[技术设计](docs/技术/技术设计.md)及[上线前待办](docs/技术/上线前待办.md)。服务启动会执行迁移，**不会自动创建账号**；当前种子脚本还会插入示例宾客，不能视为仅账号的生产初始化方案。正式域名、账号初始化、备份恢复与真机验收需在上线前落实。
