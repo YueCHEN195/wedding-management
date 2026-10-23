@@ -107,6 +107,7 @@ function GuestSearchInput({
 }: InputProps & { admin: boolean; onSearch: (keyword: string) => void }) {
   return (
     <Input.Search
+      autoComplete="off"
       {...props}
       allowClear
       aria-label={admin ? '搜索姓名或手机号' : '搜索宾客姓名'}

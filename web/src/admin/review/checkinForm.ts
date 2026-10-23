@@ -18,7 +18,7 @@ export function checkedAmount(v: CheckinFormValues) {
   return amount;
 }
 export function guestChoice(v: CheckinFormValues) {
-  return v.guestId === 'new' ? { newGuest: v.newGuest } : { guestId: v.guestId };
+  return v.guestId === 'new' ? { newGuest: v.newGuest ?? {} } : { guestId: v.guestId };
 }
 
 interface ReviewSaveState {

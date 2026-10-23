@@ -1,0 +1,24 @@
+.reason-input {
+  --reason-tag-background: #f2f1ef;
+  display: grid;
+  gap: var(--space-3);
+}
+.reason-input-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.reason-input-options .ant-tag {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: var(--line-width) solid transparent;
+  border-radius: var(--radius-panel);
+  white-space: normal;
+}
+.reason-input-options .ant-tag:not(.ant-tag-checkable-checked) {
+  background: var(--reason-tag-background);
+}
+.reason-input-options [role='checkbox']:focus-visible {
+  outline: var(--line-width) solid var(--admin-primary);
+  outline-offset: var(--space-1);
+}

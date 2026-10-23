@@ -51,3 +51,20 @@ test('管理员完整详情及手机号搜索保留，受限处理不影响管�
   const detail = await data('/1/detail','admin'); assert.equal(detail.giftTotal, 50000); assert.equal(detail.rsvp.message, '新祝福');
   assert.equal((await request('/1/qr','admin')).status, 200);
 });
+
+
+test('管理员宾客状态由有效签到决定，撤销后恢复原邀请状态且不伪造回执', async () => {
+  const list = await data('', 'admin');
+  assert.equal(list.items.find((row: { id: number }) => row.id === 1).checkedIn, true);
+  assert.equal((await data('/1/detail', 'admin')).guest.checkedIn, true);
+  sqlite.exec("UPDATE checkins SET status='cancelled' WHERE guest_id=1");
+  try {
+    const row = (await data('', 'admin')).items.find((row: { id: number }) => row.id === 1);
+    assert.equal(row.checkedIn, false);
+    assert.equal(row.status, 'pending');
+    assert.equal((await data('/1/detail', 'admin')).guest.checkedIn, false);
+    assert.equal((sqlite.prepare('SELECT count(*) AS n FROM rsvps').get() as { n: number }).n, 2);
+  } finally {
+    sqlite.exec("UPDATE checkins SET status='confirmed' WHERE guest_id=1");
+  }
+});

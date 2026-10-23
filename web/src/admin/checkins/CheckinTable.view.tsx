@@ -57,8 +57,9 @@ function checkinColumns(model: CheckinsModel): ColumnsType<CheckinDTO> {
       fixed: 'left',
       render: (_, r) => (
         <div className="checkin-identity">
+          <span className="checkin-id">{r.guestId == null ? '未关联' : `#${r.guestId}`}</span>
           <TableText value={r.guestName} />
-          <span className="checkin-id">#{r.id}</span>
+          <span className="checkin-id">签到 #{r.id}</span>
         </div>
       ),
     },

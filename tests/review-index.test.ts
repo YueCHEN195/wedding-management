@@ -66,3 +66,21 @@ test('恶意搜索按字面绑定，不扩大结果；未登录和非法参数�
   assert.equal((await app.request('/api/guests/workbench')).status, 401);
   for (const q of ['?page=0','?status=invalid','?side=invalid']) assert.equal((await request(q)).status, 400);
 });
+
+
+test('详情按宾客ID读取现场状态，撤销后不受已签到筛选或同名记录影响', async () => {
+  assert.equal((await data('?guestId=1')).items[0].status, 'confirmed');
+  sqlite.exec("UPDATE checkins SET status='cancelled' WHERE guest_id=1 AND status='confirmed'");
+  try {
+    const result = await data('?guestId=1', 'staff');
+    assert.equal(result.total, 1);
+    assert.equal(result.items[0].guestId, 1);
+    assert.equal(result.items[0].status, 'unconfirmed');
+    assert.equal(result.items[0].actual, null);
+    assert.doesNotMatch(JSON.stringify(result), /giftTotal|private-token|私人备注/);
+    assert.equal((await data('?guestId=1&status=confirmed')).total, 0);
+    assert.equal((await request('?guestId=bad')).status, 400);
+  } finally {
+    sqlite.exec("UPDATE checkins SET status='confirmed' WHERE id=10");
+  }
+});

@@ -1,3 +1,5 @@
+import { RefreshButton } from '../components/RefreshButton';
+import { GuestDetailSummary } from '../components/GuestDetailSummary';
 import { StatusTag } from '../components/StatusTag';
 import { Alert, Button, Descriptions, Empty, Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -20,12 +22,12 @@ export function StaffGuestsView({ model }: { model: StaffGuestsModel }) {
       fixed: 'left',
       render: (_, r) => (
         <div className="guest-name-cell">
+          <span className="guest-muted">#{r.id}</span>
           <Tooltip title={r.name} trigger={['hover', 'focus']}>
             <Button type="link" onClick={() => setDetailId(r.id)}>
               <span className="guest-name-label">{r.name}</span>
             </Button>
           </Tooltip>
-          <span className="guest-muted">#{r.id}</span>
         </div>
       ),
     },
@@ -88,6 +90,12 @@ export function StaffGuestsView({ model }: { model: StaffGuestsModel }) {
               ? '名单暂不可用'
               : '正在加载名单…'}
         </span>
+        <RefreshButton
+          loading={list.isFetching}
+          onRefresh={() => {
+            void list.refetch();
+          }}
+        />
       </div>
       {list.isError && (
         <Alert
@@ -162,7 +170,8 @@ function StaffGuestDetails({ model }: { model: StaffGuestsModel }) {
       )}
       {guest && (
         <>
-          <section className="guest-detail-section">
+          <StaffGuestOverview guest={guest} />
+          <section className="guest-detail-section guest-detail-panel">
             <h2>现场核对 {guest.archivedAt != null && <Tag>已归档</Tag>}</h2>
             <Descriptions
               column={1}
@@ -198,7 +207,7 @@ function StaffGuestDetails({ model }: { model: StaffGuestsModel }) {
               ]}
             />
           </section>
-          <section className="guest-detail-section">
+          <section className="guest-detail-section guest-detail-panel">
             <h2>签到记录</h2>
             <div className="guest-record-list">
               {detail.data?.checkins.length ? (
@@ -231,4 +240,38 @@ function StaffGuestDetails({ model }: { model: StaffGuestsModel }) {
 function attendanceText(total: number | null, children: number | null) {
   if (total == null) return '人数未记录';
   return `${total}人（${children == null ? '儿童人数未记录' : `含儿童${children}人`}）`;
+}
+
+function StaffGuestOverview({ guest }: { guest: StaffGuestDTO }) {
+  return (
+    <GuestDetailSummary
+      name={guest.name}
+      identity={`宾客档案 #${guest.id}`}
+      status={
+        <StatusTag tone={guest.checkedIn ? 'success' : 'neutral'}>
+          {guest.checkedIn ? '已出席' : '未签到'}
+        </StatusTag>
+      }
+      description={[guest.groupName || '未分组', guest.side && SIDE_LABEL[guest.side]]
+        .filter(Boolean)
+        .join(' · ')}
+      facts={[
+        {
+          label: '回执意向',
+          value: guest.attending
+            ? ATTENDING_LABEL[guest.attending]
+            : guest.checkedIn
+              ? '现场到场'
+              : '未填回执',
+        },
+        {
+          label: '预计到场',
+          value:
+            guest.attending === 'yes'
+              ? attendanceText(guest.headcount, guest.childrenCount)
+              : '未确认',
+        },
+      ]}
+    />
+  );
 }

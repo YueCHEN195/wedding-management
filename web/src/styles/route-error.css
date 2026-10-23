@@ -1,0 +1,54 @@
+.route-error-page {
+  --error-content-width: 480px;
+  --error-padding: 24px;
+  --error-action-gap: 12px;
+  --error-control-padding: 16px;
+  --error-control-height: 44px;
+  --error-title-size: 24px;
+  --error-text-size: 16px;
+  --error-control-radius: 8px;
+  min-height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  padding: var(--error-padding);
+  background: var(--brand-paper);
+  color: var(--brand-ink);
+}
+.route-error-page section {
+  max-width: var(--error-content-width);
+}
+.route-error-page h1 {
+  margin: 0 0 var(--error-action-gap);
+  font-size: var(--error-title-size);
+}
+.route-error-page p {
+  margin: 0 0 var(--error-padding);
+  font-size: var(--error-text-size);
+  line-height: 1.6;
+}
+.route-error-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--error-action-gap);
+}
+.route-error-actions button {
+  min-height: var(--error-control-height);
+  padding-inline: var(--error-control-padding);
+  border: 0;
+  border-radius: var(--error-control-radius);
+  background: var(--brand-ink);
+  color: var(--brand-paper);
+  font: inherit;
+  cursor: pointer;
+}
+.route-error-actions a {
+  color: inherit;
+  padding-block: var(--error-action-gap);
+  text-decoration: underline;
+}
+.route-error-actions :focus-visible {
+  outline: solid var(--brand-red);
+  outline-offset: var(--error-action-gap);
+}

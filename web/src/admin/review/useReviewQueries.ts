@@ -15,7 +15,6 @@ export function useReviewQueries(
     queryKey: ['stats', 'summary'],
     queryFn: api.stats.summary,
     enabled: me.data?.role === 'admin',
-    refetchInterval: 15000,
   });
   const confirmCandidates = useQuery({
     queryKey: ['checkin-candidates', confirming?.guestName],
@@ -36,7 +35,6 @@ export function useReviewQueries(
   const pending = useQuery({
     queryKey: ['checkins', 'pending'],
     queryFn: api.checkins.pending,
-    refetchInterval: 5000,
   });
   const invalidate = () => {
     for (const key of [

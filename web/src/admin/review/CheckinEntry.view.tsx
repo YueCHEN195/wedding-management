@@ -5,8 +5,7 @@ export function CheckinEntryView({
   onClose,
   model,
 }: Pick<CheckinEntryProps, 'open' | 'onClose'> & { model: CheckinEntryModel }) {
-  const { url, setUrl, form, saving, busy, error, canAdvance, validUrl, local, submit, next } =
-    model;
+  const { url, setUrl, form, saving, busy, error, validUrl, local, submit } = model;
   return (
     <Modal
       className="admin-dialog"
@@ -43,13 +42,18 @@ export function CheckinEntryView({
           bordered={false}
         />
       </div>
-      <Form layout="vertical">
+      <Form autoComplete="off" layout="vertical">
         <Form.Item
           label="宾客签到地址"
           validateStatus={validUrl ? undefined : 'error'}
           help={validUrl ? undefined : '请填写完整的 http 或 https 地址'}
         >
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} aria-label="宾客签到地址" />
+          <Input
+            autoComplete="off"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            aria-label="宾客签到地址"
+          />
         </Form.Item>
       </Form>
       {local && (
@@ -72,10 +76,17 @@ export function CheckinEntryView({
       </Space>
       <Typography.Title level={5}>代填姓名，加入待审核</Typography.Title>
       <Typography.Paragraph type="secondary">
-        宾客不便扫码时可在这里代登记，之后仍需核对身份和到场人数。
+        宾客不便扫码时可代登记，成功后直接填写下一位。同名来宾会分别进入待审。
       </Typography.Paragraph>
       {error && <Alert type="error" showIcon title="提交未得到成功确认" description={error} />}
-      <Form name="pending-entry" form={form} layout="vertical" onFinish={submit} disabled={busy}>
+      <Form
+        autoComplete="off"
+        name="pending-entry"
+        form={form}
+        layout="vertical"
+        onFinish={submit}
+        disabled={busy}
+      >
         <Form.Item
           name="name"
           label="来宾姓名"
@@ -86,9 +97,6 @@ export function CheckinEntryView({
         <Space wrap>
           <Button type="primary" htmlType="submit" loading={busy}>
             加入待审核
-          </Button>
-          <Button disabled={busy || !canAdvance} onClick={next}>
-            登记下一位
           </Button>
         </Space>
       </Form>

@@ -1,10 +1,17 @@
-import { Alert, Button, Descriptions, Form, Input, Typography } from 'antd';
+import { Alert, Button, Descriptions, Form, Typography } from 'antd';
+import { ReasonInput } from '../components/ReasonInput';
+import { attendanceReasons } from '../records/reasonSuggestions';
 import { formatDateTime } from '@/lib/format';
 import { AdminDrawer } from '../components/AdminDrawer';
 import { AttendanceFields } from '../components/AttendanceFields';
-import type { CheckinsModel } from './useCheckinsPage';
+import type { AttendanceEditorModel } from './useAttendanceEditor';
+import './checkins.css';
 const FORM_ID = 'checkin-attendance-editor';
-export function AttendanceEditor({ model }: { model: CheckinsModel }) {
+export function AttendanceEditor({
+  model,
+}: {
+  model: AttendanceEditorModel & { list: { isFetching: boolean; refetch: () => unknown } };
+}) {
   const { editing, form, correction, closeEditor, dirty, setDirty, submit, conflict, list } = model;
   return (
     <AdminDrawer
@@ -95,10 +102,12 @@ export function AttendanceEditor({ model }: { model: CheckinsModel }) {
         />
       )}
       <Form
+        autoComplete="off"
         id={FORM_ID}
         form={form}
         layout="vertical"
         disabled={correction.isPending}
+        scrollToFirstError={{ block: 'center', focus: true }}
         onFinish={submit}
         onValuesChange={() => setDirty(true)}
       >
@@ -110,7 +119,8 @@ export function AttendanceEditor({ model }: { model: CheckinsModel }) {
             { required: true, whitespace: true, max: 200, message: '请填写原因（最多200字）' },
           ]}
         >
-          <Input.TextArea
+          <ReasonInput
+            reasons={attendanceReasons}
             maxLength={200}
             rows={3}
             showCount

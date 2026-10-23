@@ -11,7 +11,7 @@ export function guestMenu(
   }: Pick<GuestManagementModel, 'markSent' | 'setMedia' | 'setHistoryId' | 'setAction'>,
 ) {
   return [
-    ...(g.archivedAt == null
+    ...(g.archivedAt == null && !g.checkedIn
       ? [
           {
             key: 'preview',

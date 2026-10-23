@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/client';
 import { checkins, guests, rsvps } from '../db/schema';
+import { TEMPORARY_GUEST_GROUP } from '../../shared/guestInput';
 import { generateToken, now } from './util';
 import type { GuestCandidate } from '../../shared/types';
 
@@ -45,7 +46,7 @@ export function matchOrCreateGuest(name: string, guestId?: unknown): { id: numbe
   const ts = now();
   const created = db
     .insert(guests)
-    .values({ name, inviteToken: generateToken(), status: 'pending', createdAt: ts, updatedAt: ts })
+    .values({ name, groupName: TEMPORARY_GUEST_GROUP, inviteToken: generateToken(), status: 'pending', createdAt: ts, updatedAt: ts })
     .returning()
     .get();
   return { id: created.id, name: created.name };

@@ -1,3 +1,6 @@
+import type { GuestDTO, GuestDetailDTO } from '@shared/types';
+import { GuestDetailSummary } from '../components/GuestDetailSummary';
+import { StatusTag } from '../components/StatusTag';
 import { Button, Descriptions, Dropdown, Space, Tag, Typography } from 'antd';
 import {
   ATTENDING_LABEL,
@@ -21,10 +24,9 @@ export function GuestDetails({ model }: { model: Props }) {
   const rowMenu = () => guestMenu(guest, model);
   return (
     <>
-      <section className="guest-detail-section">
-        <h2>
-          {guest.name} {guest.archivedAt != null && <Tag>已归档</Tag>}
-        </h2>
+      <GuestOverview guest={guest} data={detail.data!} />
+      <section className="guest-detail-section guest-detail-panel">
+        <h2>档案信息</h2>
         <Descriptions
           column={1}
           size="small"
@@ -39,7 +41,11 @@ export function GuestDetails({ model }: { model: Props }) {
                   .filter(Boolean)
                   .join(' · ') || '—',
             },
-            { key: 'status', label: '邀请状态', children: STATUS_LABEL[guest.status] },
+            {
+              key: 'status',
+              label: '当前状态',
+              children: guest.checkedIn ? '已出席' : STATUS_LABEL[guest.status],
+            },
             {
               key: 'note',
               label: '备注',
@@ -48,7 +54,7 @@ export function GuestDetails({ model }: { model: Props }) {
           ]}
         />
         <Space wrap>
-          {guest.archivedAt == null && (
+          {guest.archivedAt == null && !guest.checkedIn && (
             <>
               <Button
                 onClick={() => {
@@ -71,9 +77,48 @@ export function GuestDetails({ model }: { model: Props }) {
           </Dropdown>
         </Space>
       </section>
-      <section className="guest-detail-section">
+      <GuestRecords data={detail.data!} />
+    </>
+  );
+}
+
+function GuestOverview({ guest, data }: { guest: GuestDTO; data: GuestDetailDTO }) {
+  return (
+    <GuestDetailSummary
+      name={guest.name}
+      identity={`宾客档案 #${guest.id}`}
+      status={
+        <StatusTag tone={guest.archivedAt ? 'inactive' : guest.checkedIn ? 'success' : 'neutral'}>
+          {guest.archivedAt ? '已归档' : guest.checkedIn ? '已出席' : STATUS_LABEL[guest.status]}
+        </StatusTag>
+      }
+      description={[guest.groupName || '未分组', guest.side && SIDE_LABEL[guest.side]]
+        .filter(Boolean)
+        .join(' · ')}
+      facts={[
+        {
+          label: '回执预计',
+          value:
+            data.rsvp?.attending === 'yes'
+              ? `${data.rsvp.headcount} 人`
+              : data.rsvp
+                ? ATTENDING_LABEL[data.rsvp.attending]
+                : '未填回执',
+        },
+        {
+          label: '有效礼金',
+          value: data.gifts.some((g) => g.voidedAt == null) ? `¥${yuan(data.giftTotal)}` : '未登记',
+        },
+      ]}
+    />
+  );
+}
+function GuestRecords({ data }: { data: GuestDetailDTO }) {
+  return (
+    <>
+      <section className="guest-detail-section guest-detail-panel">
         <h2>回执</h2>
-        {detail.data?.rsvp ? (
+        {data.rsvp ? (
           <Descriptions
             column={1}
             size="small"
@@ -81,19 +126,17 @@ export function GuestDetails({ model }: { model: Props }) {
               {
                 key: 'attending',
                 label: '是否出席',
-                children: ATTENDING_LABEL[detail.data.rsvp.attending],
+                children: ATTENDING_LABEL[data.rsvp.attending],
               },
               {
                 key: 'count',
                 label: '预计人数',
-                children: `${detail.data.rsvp.headcount}人（含儿童${detail.data.rsvp.childrenCount}人）`,
+                children: `${data.rsvp.headcount}人（含儿童${data.rsvp.childrenCount}人）`,
               },
               {
                 key: 'message',
                 label: '祝福留言',
-                children: (
-                  <span className="guest-plain-text">{detail.data.rsvp.message || '—'}</span>
-                ),
+                children: <span className="guest-plain-text">{data.rsvp.message || '—'}</span>,
               },
             ]}
           />
@@ -101,11 +144,11 @@ export function GuestDetails({ model }: { model: Props }) {
           <Typography.Text type="secondary">尚未填写回执</Typography.Text>
         )}
       </section>
-      <section className="guest-detail-section">
-        <h2>签到记录（{detail.data?.checkins.length ?? 0}）</h2>
+      <section className="guest-detail-section guest-detail-panel">
+        <h2>签到记录（{data.checkins.length ?? 0}）</h2>
         <div className="guest-record-list">
-          {detail.data?.checkins.length ? (
-            detail.data.checkins.map((c) => (
+          {data.checkins.length ? (
+            data.checkins.map((c) => (
               <div className="guest-record-row" key={c.id}>
                 <div>
                   <Tag>{CHECKIN_STATUS_LABEL[c.status]}</Tag>
@@ -125,11 +168,11 @@ export function GuestDetails({ model }: { model: Props }) {
           )}
         </div>
       </section>
-      <section className="guest-detail-section">
-        <h2>礼金记录 · 有效合计 ¥{yuan(detail.data?.giftTotal)}</h2>
+      <section className="guest-detail-section guest-detail-panel">
+        <h2>礼金记录 · 有效合计 ¥{yuan(data.giftTotal)}</h2>
         <div className="guest-record-list">
-          {detail.data?.gifts.length ? (
-            detail.data.gifts.map((g) => (
+          {data.gifts.length ? (
+            data.gifts.map((g) => (
               <div className="guest-record-row" key={g.id}>
                 <div>
                   <Typography.Text delete={g.voidedAt != null}>¥{yuan(g.amount)}</Typography.Text> ·{' '}

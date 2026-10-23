@@ -1,5 +1,6 @@
+import { RefreshButton } from '../components/RefreshButton';
 import { useState } from 'react';
-import { Button, Empty } from 'antd';
+import { Button, Empty, Space } from 'antd';
 import { formatDateTime } from '@/lib/format';
 import type { ReviewWorkbenchModel } from './useReviewWorkbench';
 type Props = Pick<
@@ -13,17 +14,28 @@ export function ReviewQueue({ model }: { model: Props }) {
     <aside className="review-queue" aria-label="待审核队列">
       <div className="review-queue-heading">
         <h2>待审核 {pending.data ? `（${items.length}）` : ''}</h2>
-        {items.length > 3 ? (
-          <Button
-            type="text"
-            onClick={() => setQueueExpanded(!queueExpanded)}
-            aria-expanded={queueExpanded}
+        <Space size="small">
+          {items.length > 3 ? (
+            <Button
+              type="text"
+              onClick={() => setQueueExpanded(!queueExpanded)}
+              aria-expanded={queueExpanded}
+            >
+              {queueExpanded ? '收起队列' : `展开全部 ${items.length} 条`}
+            </Button>
+          ) : (
+            <span className="review-connection">先到先处理</span>
+          )}
+          <RefreshButton
+            compact
+            loading={pending.isFetching}
+            onRefresh={() => {
+              void pending.refetch();
+            }}
           >
-            {queueExpanded ? '收起队列' : `展开全部 ${items.length} 条`}
-          </Button>
-        ) : (
-          <span className="review-connection">先到先处理</span>
-        )}
+            刷新队列
+          </RefreshButton>
+        </Space>
       </div>
       <div className="review-queue-list admin-module-scroll">
         {pending.isPending ? (

@@ -1,3 +1,5 @@
+import '../components/table-toolbar.css';
+import { RefreshButton } from '../components/RefreshButton';
 import { Alert, Button } from 'antd';
 import { GiftTable } from './GiftTable.view';
 import { PlusOutlined } from '@ant-design/icons';
@@ -35,7 +37,7 @@ export function GiftsView({ model }: { model: GiftsModel }) {
       )}
       <GiftFilters model={model} />
       {isAdmin && <GiftSummary model={model} />}
-      <div className="gift-list-meta">
+      <div className="gift-list-meta admin-table-toolbar">
         <span>
           {list.data
             ? `当前范围 ${list.data.total} 笔${params.keyword || params.method ? ' · 已筛选' : ''}`
@@ -43,7 +45,15 @@ export function GiftsView({ model }: { model: GiftsModel }) {
               ? '账目暂不可用'
               : '正在读取账目…'}
         </span>
-        <span role="status">{list.isFetching && !list.isPending ? '正在更新…' : ''}</span>
+        <div className="admin-table-actions">
+          <span role="status">{list.isFetching && !list.isPending ? '正在更新…' : ''}</span>
+          <RefreshButton
+            loading={list.isFetching}
+            onRefresh={() => {
+              void list.refetch();
+            }}
+          />
+        </div>
       </div>
       {list.isError && (
         <Alert

@@ -14,7 +14,7 @@ export function useCheckinEntry(onCreated: () => void) {
   const saving = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [canAdvance, setCanAdvance] = useState(false);
+
   let validUrl = false;
   let local = false;
   try {
@@ -32,7 +32,6 @@ export function useCheckinEntry(onCreated: () => void) {
     saving.current = true;
     setBusy(true);
     setError(null);
-    setCanAdvance(false);
     try {
       const response = await api.publicCheckin.self(normalized, attempt.current!.key);
       const result =
@@ -40,11 +39,13 @@ export function useCheckinEntry(onCreated: () => void) {
           ? `${normalized} · ${response.duplicate ? '原提交仍在待审核' : '已加入待审核'} · #${response.id}`
           : `${normalized} · 原提交${response.status === 'confirmed' ? '已确认签到' : '已驳回或撤销'}，请先核对原记录`;
       message.open({
+        key: 'assisted-checkin-entry',
         type: response.status === 'pending' ? 'success' : 'info',
         content: result,
         duration: adminFeedback.toastDuration,
       });
-      setCanAdvance(true);
+      attempt.current = null;
+      form.resetFields();
       onCreated();
     } catch (e) {
       setError(
@@ -55,12 +56,6 @@ export function useCheckinEntry(onCreated: () => void) {
       setBusy(false);
     }
   };
-  const next = () => {
-    form.resetFields();
-    attempt.current = null;
-    setCanAdvance(false);
-    setError(null);
-  };
-  return { url, setUrl, form, saving, busy, error, canAdvance, validUrl, local, submit, next };
+  return { url, setUrl, form, saving, busy, error, validUrl, local, submit };
 }
 export type CheckinEntryModel = ReturnType<typeof useCheckinEntry>;

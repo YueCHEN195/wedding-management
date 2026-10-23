@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button, Popover, Space } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { ReviewDirectory } from './components/ReviewDirectory';
 import { CheckinEntry } from './components/CheckinEntry';
 import { RecordAction } from './components/RecordAction';
@@ -50,15 +50,6 @@ export function ReviewPage() {
           <Button type="primary" icon={<PlusOutlined />} onClick={openManual} disabled={saving}>
             查人 / 手动补录
           </Button>
-          <Button
-            icon={<ReloadOutlined />}
-            loading={pending.isFetching}
-            onClick={() => {
-              void pending.refetch();
-            }}
-          >
-            刷新队列
-          </Button>
           <Button onClick={() => setQrOpen(true)}>扫码 / 代登记</Button>
           {me.data?.role === 'admin' && (
             <Popover
@@ -87,7 +78,7 @@ export function ReviewPage() {
         </Space>
         <span className="review-connection">
           {pending.dataUpdatedAt
-            ? `最近更新 ${new Date(pending.dataUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })} · 每5秒刷新`
+            ? `最近更新 ${new Date(pending.dataUpdatedAt).toLocaleTimeString('zh-CN', { hour12: false })} · ${model.realtimeConnected ? '实时连接' : '连接恢复中，每15秒备用刷新'}`
             : '正在连接待审队列'}
         </span>
       </div>

@@ -6,6 +6,7 @@ import { checkins, checkinSubmissions, gifts, guests, operationLogs, type Checki
 import { findGuestCandidates, matchOrCreateGuest } from '../lib/guest';
 import type { SessionPayload } from '../auth/jwt';
 import { insertGiftWithAudit } from './gifts';
+import { TEMPORARY_GUEST_GROUP } from '../../shared/guestInput';
 import { MAX_HEADCOUNT } from '../../shared/constraints';
 import { generateToken, now } from '../lib/util';
 
@@ -19,7 +20,7 @@ const checkinFields = z.object({
   ...attendanceFields,
   guestId: z.number().int().positive().safe().optional(),
   newGuest: z.object({
-    groupName: z.string().trim().min(1).max(50),
+    groupName: z.string().trim().min(1).max(50).optional(),
     side: z.enum(['male', 'female', 'both']).optional(),
   }).optional(),
   amount: z.number().int().min(0).max(10_000_000),
@@ -65,7 +66,7 @@ function resolveGuest(name: string, input: z.infer<typeof confirmCheckinSchema>)
   if (!input.newGuest) return matchOrCreateGuest(name, input.guestId);
   if (input.guestId != null) throw new CheckinError('INVALID_GUEST', '不能同时选择已有宾客与新建宾客', 400);
   const ts = now();
-  return db.insert(guests).values({ name, ...input.newGuest, inviteToken: generateToken(),
+  return db.insert(guests).values({ name, ...input.newGuest, groupName: input.newGuest.groupName ?? TEMPORARY_GUEST_GROUP, inviteToken: generateToken(),
     status: 'pending', createdAt: ts, updatedAt: ts }).returning({ id: guests.id, name: guests.name }).get();
 }
 function result(checkin: CheckinRow, duplicate = false) {

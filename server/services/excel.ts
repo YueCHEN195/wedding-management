@@ -91,7 +91,7 @@ export async function parseGuestWorkbook(buffer: Buffer): Promise<ParseGuestResu
       side: sideRaw ? SIDE_MAP[sideRaw] ?? sideRaw : null,
     });
     if (!parsed.success) {
-      failed.push({ row: r, reason: '请核对姓名长度（1–50字）、归属方（男方／女方／双方）及各字段长度' });
+      failed.push({ row: r, reason: '请核对姓名长度（1–50字）、手机号（11位大陆手机号或留空）、归属方（男方／女方／双方）及各字段长度' });
       continue;
     }
     guests.push({ ...parsed.data, side: parsed.data.side ?? null });

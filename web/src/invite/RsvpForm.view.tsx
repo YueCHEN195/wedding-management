@@ -65,6 +65,7 @@ export function RsvpForm({
 
   return (
     <form
+      autoComplete="off"
       className="rsvp-form"
       id={RSVP_FORM_ID}
       ref={formRef}
@@ -102,7 +103,7 @@ export function RsvpForm({
             value={nameInput}
             maxLength={MAX_NAME_LENGTH}
             required
-            autoComplete="name"
+            autoComplete="off"
             placeholder="请输入本人姓名"
             disabled={saving}
             onChange={(event) => setNameInput(event.target.value)}

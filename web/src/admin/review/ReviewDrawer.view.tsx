@@ -5,7 +5,7 @@ import { METHOD_LABEL, yuan } from '@/lib/format';
 import { AdminDrawer } from '../components/AdminDrawer';
 import { AttendanceFields } from '../components/AttendanceFields';
 import { OptionalGiftFields } from './OptionalGiftFields.view';
-import { GuestSelection } from './GuestSelection.view';
+import { ReviewIdentityFields } from './ReviewIdentityFields.view';
 import type { CheckinFormValues } from './checkinForm';
 import type { ReviewWorkbenchModel } from './useReviewWorkbench';
 const REVIEW_FORM_ID = 'review-checkin-form';
@@ -35,16 +35,12 @@ type Props = Pick<
 export function ReviewDrawer({ model }: { model: Props }) {
   const {
     manualOpen,
-    manualName,
     confirming,
     dirty,
     active,
     saving,
     activeForm,
     noLongerPending,
-    candidates,
-    candidateNamePending,
-    setNameComposing,
     setRecordAction,
     setDirty,
     submit,
@@ -77,6 +73,7 @@ export function ReviewDrawer({ model }: { model: Props }) {
           : `提交 #${confirming?.id} · ${confirming?.source === 'self' ? '自助扫码' : '手动补录'}`}
       </Typography.Paragraph>
       <Form<CheckinFormValues>
+        autoComplete="off"
         id={REVIEW_FORM_ID}
         className="review-form"
         key={manualOpen ? 'manual' : `confirm-${confirming?.id}`}
@@ -93,30 +90,9 @@ export function ReviewDrawer({ model }: { model: Props }) {
       >
         <div className="review-form-body admin-module-scroll">
           <ReviewAlerts model={model} />
+          <ReviewIdentityFields model={model} />
           <div className="review-section">
-            <h3>1 · 核对宾客</h3>
-            {manualOpen && (
-              <Form.Item
-                name="guestName"
-                label="来宾姓名"
-                rules={[
-                  { required: true, whitespace: true, max: 30, message: '请填写姓名（1–30字）' },
-                ]}
-              >
-                <Input
-                  maxLength={30}
-                  placeholder="输入姓名查找宾客档案"
-                  onCompositionStart={() => setNameComposing(true)}
-                  onCompositionEnd={() => setNameComposing(false)}
-                />
-              </Form.Item>
-            )}
-            {(!manualOpen || !!manualName) && (
-              <GuestSelection query={candidates} waitingForName={candidateNamePending} />
-            )}
-          </div>
-          <div className="review-section">
-            <h3>2 · 实际到场</h3>
+            <h3>实际到场</h3>
             <Typography.Paragraph type="secondary">
               总人数包含儿童；出席回执会自动带入，可按现场实际修改。
             </Typography.Paragraph>
@@ -125,14 +101,18 @@ export function ReviewDrawer({ model }: { model: Props }) {
             </div>
           </div>
           <div className="review-section review-gift">
-            <h3>3 · 礼金登记</h3>
+            <h3>礼金登记</h3>
             <OptionalGiftFields />
             <Form.Item
               name="note"
               label="备注（可选）"
               rules={[{ max: MAX_TEXT_LENGTH, message: '备注最多500字' }]}
             >
-              <Input maxLength={MAX_TEXT_LENGTH} placeholder="补充现场核对信息" />
+              <Input
+                autoComplete="off"
+                maxLength={MAX_TEXT_LENGTH}
+                placeholder="补充现场核对信息"
+              />
             </Form.Item>
           </div>
           {!manualOpen && confirming && (

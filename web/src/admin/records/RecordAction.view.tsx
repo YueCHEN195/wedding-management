@@ -1,4 +1,6 @@
-import { Alert, Button, Form, Input, List, Modal, Typography } from 'antd';
+import { Alert, Button, Form, List, Modal, Typography } from 'antd';
+import { ReasonInput } from '../components/ReasonInput';
+import { actionReasons } from './reasonSuggestions';
 import type { LifecycleAction, OperationLogDTO } from '@shared/types';
 import { formatDateTime, yuan } from '@/lib/format';
 import { ACTION_LABEL, type RecordActionTarget } from './types';
@@ -104,7 +106,7 @@ export function RecordActionView({
             description={preview.data.effect}
             style={{ marginBottom: 16 }}
           />
-          <Form form={form} layout="vertical" onFinish={(v) => submit.mutate(v)}>
+          <Form autoComplete="off" form={form} layout="vertical" onFinish={(v) => submit.mutate(v)}>
             <Form.Item
               name="reason"
               label="操作原因"
@@ -112,7 +114,8 @@ export function RecordActionView({
                 { required: true, whitespace: true, max: 200, message: '请填写原因（最多200字）' },
               ]}
             >
-              <Input.TextArea
+              <ReasonInput
+                reasons={actionReasons[target.action]}
                 rows={2}
                 maxLength={200}
                 showCount

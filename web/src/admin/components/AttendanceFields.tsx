@@ -17,14 +17,14 @@ export function AttendanceFields({ showHint = true }: { showHint?: boolean }) {
       const n = parseHeadcount(v);
       return n != null && n >= 1 ? Promise.resolve() : Promise.reject(new Error('请填1–20的整数'));
     } }]}>
-      <Input inputMode="numeric" maxLength={3} placeholder="例如：3" />
+      <Input autoComplete="off" inputMode="numeric" maxLength={3} placeholder="例如：3" />
     </Form.Item>
     <Form.Item name="actualChildrenInput" label="其中儿童人数" dependencies={['actualHeadcountInput']} rules={[({ getFieldValue }) => ({ validator: (_, v) => {
       const n = parseHeadcount(v);
       const total = parseHeadcount(getFieldValue('actualHeadcountInput'));
       return n != null && total != null && n <= total ? Promise.resolve() : Promise.reject(new Error('请填0至总人数之间的整数'));
     } })]}>
-      <Input inputMode="numeric" maxLength={3} placeholder="没有儿童填0" />
+      <Input autoComplete="off" inputMode="numeric" maxLength={3} placeholder="没有儿童填0" />
     </Form.Item>
   </>;
 }

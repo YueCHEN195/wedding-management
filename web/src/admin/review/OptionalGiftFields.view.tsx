@@ -35,7 +35,12 @@ export function OptionalGiftFields() {
               },
             ]}
           >
-            <Input inputMode="decimal" maxLength={12} placeholder="例如：600.00" />
+            <Input
+              autoComplete="off"
+              inputMode="decimal"
+              maxLength={12}
+              placeholder="例如：600.00"
+            />
           </Form.Item>
           <Form.Item
             name="method"

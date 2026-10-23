@@ -5,11 +5,13 @@ import type { CheckinDTO, ReviewGuestRow } from '@shared/types';
 import type { AdminOutletContext } from '../AdminLayout';
 import type { RecordActionTarget } from '../components/RecordAction';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useReviewRealtime } from './useReviewRealtime';
 import { useReviewQueries } from './useReviewQueries';
 import { useReviewSubmission } from './useReviewSubmission';
 import { useRsvpAttendance } from './useRsvpAttendance';
 import { isReviewSaveBlocked, type CheckinFormValues } from './checkinForm';
 export function useReviewWorkbench() {
+  const realtimeConnected = useReviewRealtime();
   const navigate = useNavigate();
   const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
   const [recordAction, setRecordAction] = useState<RecordActionTarget | null>(null);
@@ -166,6 +168,7 @@ export function useReviewWorkbench() {
     else confirm.mutate(input);
   };
   return {
+    realtimeConnected,
     me,
     stats,
     pending,

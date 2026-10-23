@@ -109,6 +109,7 @@ function CheckinForm({
   const saving = state === 'saving';
   return (
     <form
+      autoComplete="off"
       className="checkin-form"
       noValidate
       aria-busy={saving}
@@ -123,7 +124,7 @@ function CheckinForm({
         ref={inputRef}
         id="checkin-name"
         name="name"
-        autoComplete="name"
+        autoComplete="off"
         enterKeyHint="done"
         required
         maxLength={30}

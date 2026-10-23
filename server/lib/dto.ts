@@ -7,7 +7,7 @@ export function inviteUrl(token: string): string {
   return `${base.replace(/\/$/, '')}/invite/${token}`;
 }
 
-export function guestToDTO(row: GuestRow, attending: RsvpRow['attending'] | null = null): GuestDTO {
+export function guestToDTO(row: GuestRow, attending: RsvpRow['attending'] | null = null, checkedIn?: boolean): GuestDTO {
   return {
     id: row.id,
     name: row.name,
@@ -25,6 +25,7 @@ export function guestToDTO(row: GuestRow, attending: RsvpRow['attending'] | null
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     attending,
+    ...(checkedIn == null ? {} : { checkedIn }),
   };
 }
 

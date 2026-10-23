@@ -1,6 +1,8 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
+import { eventRoutes } from './routes/events';
+import { notifyBusinessWrites } from './services/realtime';
 import { logger } from 'hono/logger';
 import { env } from './env';
 import { runMigrations } from './db/migrate';
@@ -31,6 +33,8 @@ app.onError((err, c) => {
 });
 
 app.use('*', logger());
+app.use('/api/*', notifyBusinessWrites);
+app.route('/api/events', eventRoutes);
 
 app.route('/api/lifecycle', lifecycleRoutes);
 app.route('/api/health', healthRoutes);

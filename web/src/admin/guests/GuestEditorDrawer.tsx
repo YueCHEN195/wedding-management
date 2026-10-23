@@ -1,14 +1,14 @@
-import { Alert, Button, Form, Input, Select, Typography } from 'antd';
-import { MAX_GROUP_LENGTH, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
+import { Alert, AutoComplete, Button, Form, Input, Select, Typography } from 'antd';
+import { MAX_GROUP_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
+import { GuestBasicFields } from './GuestBasicFields.view';
 import { SIDE_LABEL } from '@/lib/format';
 import { AdminDrawer } from '../components/AdminDrawer';
 import { GuestDetails } from './GuestDetails';
 import type { GuestManagementModel } from './useGuestManagement';
 const GUEST_FORM_ID = 'guest-editor';
-// Existing server limits; these fields are not phone-format validation.
-const SHORT_FIELD_LIMIT = 30;
 type Props = Pick<
   GuestManagementModel,
+  | 'groups'
   | 'mode'
   | 'selectedId'
   | 'save'
@@ -85,7 +85,8 @@ export function GuestEditorDrawer({ model }: { model: Props }) {
             </Button>
           ) : (
             guest &&
-            !guest.archivedAt && (
+            !guest.archivedAt &&
+            !guest.checkedIn && (
               <Button
                 type="primary"
                 disabled={detail.isFetching || detail.isError}
@@ -143,6 +144,7 @@ export function GuestEditorDrawer({ model }: { model: Props }) {
       )}
       {editing ? (
         <Form
+          autoComplete="off"
           id={GUEST_FORM_ID}
           form={form}
           layout="vertical"
@@ -151,41 +153,25 @@ export function GuestEditorDrawer({ model }: { model: Props }) {
           onValuesChange={() => setDirty(true)}
           onFinish={(values) => save.mutate({ ...values, side: values.side ?? null })}
         >
-          <section className="guest-editor-section">
-            <h2>基本信息</h2>
-            <Form.Item
-              name="name"
-              label="姓名"
-              rules={[
-                {
-                  required: true,
-                  whitespace: true,
-                  max: MAX_NAME_LENGTH,
-                  message: '请填写姓名（1–50字）',
-                },
-              ]}
-            >
-              <Input maxLength={MAX_NAME_LENGTH} autoFocus autoComplete="off" />
-            </Form.Item>
-            <div className="guest-form-grid">
-              <Form.Item
-                name="salutation"
-                label="请柬称谓"
-                extra="用于请柬上的称呼，可留空。"
-                rules={[{ max: SHORT_FIELD_LIMIT }]}
-              >
-                <Input maxLength={SHORT_FIELD_LIMIT} placeholder="如：张先生" />
-              </Form.Item>
-              <Form.Item name="phone" label="手机号" rules={[{ max: SHORT_FIELD_LIMIT }]}>
-                <Input maxLength={SHORT_FIELD_LIMIT} inputMode="tel" />
-              </Form.Item>
-            </div>
-          </section>
+          <GuestBasicFields />
           <section className="guest-editor-section">
             <h2>关系与归属</h2>
             <div className="guest-form-grid">
               <Form.Item name="groupName" label="分组" rules={[{ max: MAX_GROUP_LENGTH }]}>
-                <Input maxLength={MAX_GROUP_LENGTH} placeholder="如：新郎同事" />
+                <AutoComplete
+                  options={(model.groups.data ?? []).map((value) => ({ value }))}
+                  filterOption={(input, option) =>
+                    String(option?.value ?? '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                >
+                  <Input
+                    autoComplete="off"
+                    maxLength={MAX_GROUP_LENGTH}
+                    placeholder="输入新分组或选择已有分组"
+                  />
+                </AutoComplete>
               </Form.Item>
               <Form.Item name="side" label="归属方">
                 <Select

@@ -26,10 +26,10 @@ const projection = `WITH latest_rsvp AS (
  FROM checkins c WHERE c.status='pending' AND c.guest_id IS NULL
 ) `;
 
-export function reviewIndex(params: { keyword: string; status?: ReviewGuestStatus; side?: string; page: number; pageSize: number; offset: number }, admin: boolean) {
+export function reviewIndex(params: { keyword: string; guestId?: number; status?: ReviewGuestStatus; side?: string; page: number; pageSize: number; offset: number }, admin: boolean) {
   const where = ` WHERE (name LIKE @keyword OR COALESCE(groupName,'') LIKE @keyword)
-    AND (@status IS NULL OR status=@status) AND (@side IS NULL OR side=@side)`;
-  const bindings = { keyword: `%${params.keyword}%`, status: params.status ?? null, side: params.side ?? null };
+    AND (@guestId IS NULL OR guestId=@guestId) AND (@status IS NULL OR status=@status) AND (@side IS NULL OR side=@side)`;
+  const bindings = { guestId: params.guestId ?? null, keyword: `%${params.keyword}%`, status: params.status ?? null, side: params.side ?? null };
   const total = (sqlite.prepare(projection + 'SELECT COUNT(*) AS total FROM directory' + where).get(bindings) as { total: number }).total;
   const rows = sqlite.prepare(projection + 'SELECT * FROM directory' + where + ' ORDER BY name, key LIMIT @limit OFFSET @offset')
     .all({ ...bindings, limit: params.pageSize, offset: params.offset }) as ReviewGuestRow[];

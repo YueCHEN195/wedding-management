@@ -1,3 +1,5 @@
+import '../components/table-toolbar.css';
+import { RefreshButton } from '../components/RefreshButton';
 import { Alert, Button } from 'antd';
 import { PageHeader } from '../components/PageHeader';
 import { RsvpEditor } from './RsvpEditor.view';
@@ -17,7 +19,7 @@ export function RsvpsView({ model }: { model: RsvpsModel }) {
       <RsvpFilters model={model} />
       <RsvpSummary model={model} />
       <p className="rsvp-helper">汇总基于当前筛选，排除已归档宾客；列表仍保留其原回执。</p>
-      <div className="rsvp-list-meta">
+      <div className="rsvp-list-meta admin-table-toolbar">
         <span>
           {list.data
             ? `当前范围 ${list.data.total} 份回执${params.keyword || params.attending ? ' · 已筛选' : ''}`
@@ -25,7 +27,15 @@ export function RsvpsView({ model }: { model: RsvpsModel }) {
               ? '回执暂不可用'
               : '正在读取回执…'}
         </span>
-        <span role="status">{list.isFetching && !list.isPending ? '正在更新…' : ''}</span>
+        <div className="admin-table-actions">
+          <span role="status">{list.isFetching && !list.isPending ? '正在更新…' : ''}</span>
+          <RefreshButton
+            loading={list.isFetching}
+            onRefresh={() => {
+              void list.refetch();
+            }}
+          />
+        </div>
       </div>
       {list.isError && (
         <Alert

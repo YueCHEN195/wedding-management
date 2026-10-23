@@ -58,14 +58,14 @@ guestRoutes.get('/', (c) => {
     }
   }
 
-  if (!isAdmin && ids.length) {
+  if (ids.length) {
     for (const r of db.select({ guestId: checkins.guestId }).from(checkins).where(and(inArray(checkins.guestId, ids), eq(checkins.status, 'confirmed'))).all()) {
       if (r.guestId != null) checkedIds.add(r.guestId);
     }
   }
   return c.json({
     ok: true,
-    data: { items: rows.map((r) => isAdmin ? guestToDTO(r, attendingMap.get(r.id) ?? null) : staffGuestToDTO(r, rsvpMap.get(r.id), checkedIds.has(r.id))), total, page, pageSize },
+    data: { items: rows.map((r) => isAdmin ? guestToDTO(r, attendingMap.get(r.id) ?? null, checkedIds.has(r.id)) : staffGuestToDTO(r, rsvpMap.get(r.id), checkedIds.has(r.id))), total, page, pageSize },
   });
 });
 
@@ -73,7 +73,7 @@ guestRoutes.get('/', (c) => {
 guestRoutes.get('/workbench', (c) => {
   const url = new URL(c.req.url);
   return c.json({ ok: true, data: reviewIndex({
-    ...parsePage(c.req.url, 10), keyword: str(url.searchParams.get('keyword')),
+    ...parsePage(c.req.url, 10), guestId: url.searchParams.has('guestId') ? parseId(url.searchParams.get('guestId')!) : undefined, keyword: str(url.searchParams.get('keyword')),
     status: enumQuery(url.searchParams.get('status'), ['pending', 'confirmed', 'unconfirmed'] as const) ?? undefined,
     side: enumQuery(url.searchParams.get('side'), ['male', 'female', 'both'] as const) ?? undefined,
   }, c.get('user').role === 'admin') });
@@ -157,7 +157,7 @@ guestRoutes.get('/:id/detail', (c) => {
   return c.json({
     ok: true,
     data: {
-      guest: guestToDTO(guest, rsvpRow?.attending ?? null),
+      guest: guestToDTO(guest, rsvpRow?.attending ?? null, checkinRows.some(r => r.status === 'confirmed')),
       rsvp: rsvpRow ? rsvpToDTO(rsvpRow as RsvpRow) : null,
       checkins: checkinRows.map((r) => checkinToDTO(r)),
       gifts: giftRows.map(giftToDTO),

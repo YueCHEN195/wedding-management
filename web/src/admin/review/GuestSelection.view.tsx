@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, Select, Typography } from 'antd';
+import { Alert, Button, Form, Select, Typography } from 'antd';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { GuestCandidate } from '@shared/types';
 import { ATTENDING_LABEL, SIDE_LABEL } from '@/lib/format';
@@ -42,12 +42,18 @@ export function GuestSelection({
         未找到同名宾客，确认后将自动建立新档案。
       </Typography.Paragraph>
     );
+  if (selection !== 'new' && candidates.length === 1 && !candidates[0].checkedIn)
+    return (
+      <Typography.Paragraph type="secondary">
+        已匹配 #{candidates[0].id} · {candidates[0].name}，确认后登记实际到场人数。
+      </Typography.Paragraph>
+    );
   const label = (g: GuestCandidate) =>
     `#${g.id} · ${g.name} · ${g.checkedIn ? '已签到' : '未签到'} · ${g.side ? SIDE_LABEL[g.side] : '归属未填'} · ${g.groupName || '未分组'} · ${g.attending ? ATTENDING_LABEL[g.attending] : '未回执'}${g.attending === 'yes' ? ` ${g.headcount}人（儿童${g.childrenCount ?? 0}人）` : ''}`;
   return (
     <>
       {candidates.length > 1 && (
-        <Alert type="warning" showIcon title="有多位同名宾客，请核对分组与归属后选择本人" />
+        <Alert type="warning" showIcon title="有同名记录，请核对本人；已签到记录不可重复确认" />
       )}
       <Form.Item
         name="guestId"
@@ -68,28 +74,9 @@ export function GuestSelection({
         />
       </Form.Item>
       {selection === 'new' && (
-        <>
-          <Typography.Paragraph type="secondary">
-            确认是另一位本人后再新建；同一人追加礼金请到礼金管理登记。
-          </Typography.Paragraph>
-          <Form.Item
-            name={['newGuest', 'groupName']}
-            label="辨识分组"
-            preserve={false}
-            rules={[
-              { required: true, whitespace: true, max: 50, message: '请填写辨识分组（最多50字）' },
-            ]}
-          >
-            <Input placeholder="例如：新郎同事带来的朋友" maxLength={50} />
-          </Form.Item>
-          <Form.Item name={['newGuest', 'side']} label="归属方（可选）" preserve={false}>
-            <Select
-              allowClear
-              placeholder="请选择"
-              options={Object.entries(SIDE_LABEL).map(([value, label]) => ({ value, label }))}
-            />
-          </Form.Item>
-        </>
+        <Typography.Paragraph type="secondary">
+          本次新增独立档案，归入“临时到场”。
+        </Typography.Paragraph>
       )}
     </>
   );

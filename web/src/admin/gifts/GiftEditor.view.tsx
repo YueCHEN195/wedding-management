@@ -1,5 +1,7 @@
 import { Button, Form, Input, Select, Typography, Alert } from 'antd';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
+import { ReasonInput } from '../components/ReasonInput';
+import { giftCorrectionReasons } from '../records/reasonSuggestions';
 import { parseGiftYuan } from '@shared/numericInput';
 import type { GiftMethod } from '@shared/types';
 import { METHOD_LABEL, yuan } from '@/lib/format';
@@ -74,6 +76,7 @@ export function GiftEditor({ model }: { model: GiftEditorModel }) {
       )}
       <GiftConflictFeedback model={model} />
       <Form<GiftFormValues>
+        autoComplete="off"
         id={FORM_ID}
         form={form}
         disabled={save.isPending}
@@ -131,7 +134,13 @@ export function GiftEditor({ model }: { model: GiftEditorModel }) {
                 },
               ]}
             >
-              <Input inputMode="decimal" maxLength={12} prefix="¥" placeholder="例如：600.00" />
+              <Input
+                autoComplete="off"
+                inputMode="decimal"
+                maxLength={12}
+                prefix="¥"
+                placeholder="例如：600.00"
+              />
             </Form.Item>
             <Form.Item name="method" label="方式" rules={[{ required: true }]}>
               <Select
@@ -171,7 +180,8 @@ export function GiftEditor({ model }: { model: GiftEditorModel }) {
                 },
               ]}
             >
-              <Input.TextArea
+              <ReasonInput
+                reasons={giftCorrectionReasons}
                 maxLength={200}
                 rows={2}
                 showCount

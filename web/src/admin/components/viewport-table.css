@@ -1,9 +1,47 @@
-.viewport-table { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
-.viewport-table-area { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; container-type: size; }
-.viewport-table-area .ant-table-body { overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
-.viewport-table-empty { position: absolute; inset-inline: 0; bottom: 0; display: flex; align-items: center; justify-content: center; padding: var(--space-4); text-align: center; pointer-events: none; }
-.viewport-table-empty .ant-empty { margin: 0; }
-.viewport-table-pagination { flex-shrink: 0; margin-block: var(--space-3) 0; justify-content: flex-end; }
+.viewport-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.viewport-table-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  container-type: size;
+}
+.viewport-table-area .ant-table-body {
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+.viewport-table .ant-table-placeholder > .ant-table-cell {
+  padding: 0;
+}
+.viewport-table-empty {
+  min-height: calc(var(--viewport-table-body-height) - var(--line-width));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  box-sizing: border-box;
+  text-align: center;
+}
+.viewport-table-empty .ant-empty {
+  margin: 0;
+}
+.viewport-table-pagination {
+  flex-shrink: 0;
+  margin-block: var(--space-3) 0;
+  justify-content: flex-end;
+}
 
 /* A short viewport prioritizes the message over the decorative empty image. */
-@container (max-height: 160px) { .viewport-table-empty .ant-empty-image { display: none; } }
+@container (max-height: 160px) {
+  .viewport-table-empty .ant-empty-image {
+    display: none;
+  }
+}

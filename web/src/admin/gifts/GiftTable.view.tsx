@@ -55,8 +55,9 @@ function giftColumns(model: GiftsModel): ColumnsType<GiftDTO> {
       fixed: 'left',
       render: (_, r) => (
         <div className="gift-identity">
+          <span className="gift-id">{r.guestId == null ? '未关联' : `#${r.guestId}`}</span>
           <TableText value={r.guestName} />
-          <span className="gift-id">#{r.id}</span>
+          <span className="gift-id">礼金 #{r.id}</span>
         </div>
       ),
     },

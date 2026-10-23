@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { z } from 'zod';
+import { MOBILE_PHONE_PATTERN } from '../../shared/guestInput';
 import { MAX_GIFT_CENTS, MAX_GROUP_LENGTH, MAX_HEADCOUNT, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../shared/constraints';
 
 export class InputError extends Error { readonly code = 'VALIDATION'; }
@@ -45,9 +46,9 @@ export const giftCreateSchema = z.object({ submissionKey: z.uuid(), guestName: n
 export const giftPatchSchema = z.object({ amount: money.optional(), method: method.optional(), note: optionalText(MAX_TEXT_LENGTH).optional(),
   expectedVersion: z.number().int().positive().safe(), reason: z.string().trim().min(1).max(200) }).strict()
   .refine((v) => v.amount !== undefined || v.method !== undefined || v.note !== undefined);
-export const guestCreateSchema = z.object({ name, salutation: optionalText(30), phone: optionalText(30),
+export const guestCreateSchema = z.object({ name, salutation: optionalText(30), phone: optionalText(30).refine(value => value == null || MOBILE_PHONE_PATTERN.test(value)),
   groupName: optionalText(MAX_GROUP_LENGTH), side: z.enum(['male', 'female', 'both']).nullable().optional(), note: optionalText(MAX_TEXT_LENGTH) }).strict();
 export const guestPatchSchema = guestCreateSchema.partial().refine((v) => Object.keys(v).length > 0);
 export const RSVP_INPUT_MESSAGE = '请核对出席状态及人数：总人数须为0–20的整数，出席至少1人，儿童不超过总人数，留言最多500字';
 export const GIFT_INPUT_MESSAGE = '请核对姓名、宾客与礼金：金额为0.01–100000元、最多两位小数；方式为现金、微信或支付宝，备注最多500字';
-export const GUEST_INPUT_MESSAGE = '请核对宾客信息：姓名1–50字、称谓及电话最多30字、分组最多50字、备注最多500字，归属为男方、女方或双方';
+export const GUEST_INPUT_MESSAGE = '请核对宾客信息：姓名1–50字、称谓最多30字、手机号须为11位大陆手机号或留空、分组最多50字、备注最多500字，归属为男方、女方或双方';

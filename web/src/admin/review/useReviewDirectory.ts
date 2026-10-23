@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import type { AdminOutletContext } from '../AdminLayout';
+import { useAttendanceEditor } from '../checkins/useAttendanceEditor';
+import type { RecordActionTarget } from '../records/types';
 import { useGiftEditor } from '../gifts/useGiftEditor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Form, message } from 'antd';
@@ -20,11 +22,14 @@ export interface ReviewDirectoryProps {
 export function useReviewDirectory(admin: boolean) {
   const qc = useQueryClient();
   const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
+  const [action, setAction] = useState<RecordActionTarget | null>(null);
+  const [historyId, setHistoryId] = useState<number | null>(null);
   const giftEditor = useGiftEditor();
+  const attendanceEditor = useAttendanceEditor();
   const [keyword, setKeyword] = useState('');
   const { pending: keywordDebouncing } = useDebouncedValue(keyword);
   const searchPending = !!keyword && keywordDebouncing;
-  const [status, setStatus] = useState<ReviewGuestStatus>();
+  const [status, setStatus] = useState<ReviewGuestStatus | undefined>('confirmed');
   const [side, setSide] = useState<Side>();
   const [page, setPage] = useState(1);
   const [advanced, setAdvanced] = useState(false);
@@ -36,12 +41,21 @@ export function useReviewDirectory(admin: boolean) {
     queryKey: ['review-directory', { keyword, status, side, page }],
     queryFn: () => api.guests.workbench({ keyword, status, side, page, pageSize: 10 }),
     enabled: !searchPending,
-    refetchInterval: 15000,
+  });
+  const selectedProjection = useQuery({
+    queryKey: ['review-directory', 'detail', selected?.guestId],
+    queryFn: () => api.guests.workbench({ guestId: selected!.guestId! }),
+    enabled: selected?.guestId != null,
   });
   const detail = useQuery({
     queryKey: ['guest-detail', selected?.guestId],
     queryFn: () => api.guests.detail(selected!.guestId!),
     enabled: admin && selected?.guestId != null,
+  });
+  const staffDetail = useQuery({
+    queryKey: ['staff-guest-detail', selected?.guestId],
+    queryFn: () => api.guests.staffDetail(selected!.guestId!),
+    enabled: !admin && selected?.guestId != null,
   });
   const { baseGuest, setBaseGuest, rechecking, recheck } = useGuestDraft(form, detail);
   const update = useMutation({
@@ -95,6 +109,7 @@ export function useReviewDirectory(admin: boolean) {
     rechecking,
     recheckDraft,
     giftEditor,
+    attendanceEditor,
     keyword,
     searchPending,
     setKeyword,
@@ -106,8 +121,17 @@ export function useReviewDirectory(admin: boolean) {
     setPage,
     advanced,
     setAdvanced,
-    selected,
+    selected:
+      selectedProjection.data?.items[0] ??
+      query.data?.items.find((row) => row.key === selected?.key) ??
+      selected,
     setSelected,
+    staffDetail,
+    selectedProjection,
+    action,
+    setAction,
+    historyId,
+    setHistoryId,
     editing,
     setDirty,
     form,

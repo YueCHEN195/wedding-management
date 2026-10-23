@@ -237,9 +237,9 @@ test('手动补录可新建同名档案，同标识重试不再新建，改变�
   assert.equal(conflict.status, 409);
 });
 
-test('新建同名档案须有辨识分组，不能同时选择已有宾客，未登录不能建档', async () => {
+test('新建临时档案的可选信息须有效，不能同时选择已有宾客，未登录不能建档', async () => {
   const guestId = addGuest('非法新建');
-  for (const value of [{}, { groupName: '  ' }, { groupName: 'a'.repeat(51) }, { groupName: '朋友', side: 'bad' }]) {
+  for (const value of [{ groupName: '  ' }, { groupName: 'a'.repeat(51) }, { groupName: '朋友', side: 'bad' }]) {
     assert.equal((await manual('非法新建', { newGuest: value })).status, 400);
   }
   assert.equal((await manual('非法新建', { guestId, newGuest })).status, 400);
@@ -260,4 +260,48 @@ test('新建同名档案与礼金处于同一事务，写失败不遗留新档�
     assert.equal(count('gifts'), 1);
     assert.equal((sqlite.prepare('SELECT status FROM checkins WHERE id=?').get(second.body.data.id) as any).status, 'pending');
   } finally { sqlite.exec('DROP TRIGGER fail_gift'); }
+});
+
+
+test('临时到场无需分组，同名明确新建仍按不同ID关联且重试幂等', async () => {
+  const first = await manual('无需分组', { amount: 0 });
+  assert.equal(first.status, 200);
+  const key = randomUUID();
+  const second = await manual('无需分组', { submissionKey: key, newGuest: {}, amount: 0 });
+  assert.equal(second.status, 200);
+  assert.notEqual(second.body.data.guestId, first.body.data.guestId);
+  const retry = await manual('无需分组', { submissionKey: key, newGuest: {}, amount: 0 });
+  assert.equal(retry.body.data.id, second.body.data.id);
+  assert.equal(retry.body.data.duplicate, true);
+  assert.equal(count('guests'), 2);
+  assert.equal(
+    (
+      sqlite.prepare('SELECT group_name FROM guests WHERE id=?').get(second.body.data.guestId) as {
+        group_name: string | null;
+      }
+    ).group_name,
+    '临时到场',
+  );
+});
+
+
+test('首次现场扫码建档默认进入临时到场分组，同名新提交保留独立待审', async () => {
+  const first = await self('默认分组');
+  const guest = sqlite
+    .prepare('SELECT id, group_name FROM guests WHERE name=?')
+    .get('默认分组') as { id: number; group_name: string };
+  assert.equal(guest.group_name, '临时到场');
+  assert.equal((await confirm(first.body.data.id)).status, 200);
+  const second = await self('默认分组');
+  assert.equal(second.status, 200);
+  assert.equal(second.body.data.status, 'pending');
+  assert.notEqual(second.body.data.id, first.body.data.id);
+  assert.equal(
+    (
+      sqlite.prepare('SELECT guest_id FROM checkins WHERE id=?').get(second.body.data.id) as {
+        guest_id: number | null;
+      }
+    ).guest_id,
+    null,
+  );
 });

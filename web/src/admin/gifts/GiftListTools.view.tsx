@@ -23,6 +23,7 @@ export function GiftFilters({ model }: { model: GiftsModel }) {
       />
       <div className="admin-filter-row">
         <Input.Search
+          autoComplete="off"
           aria-label="搜索礼金登记姓名"
           placeholder="搜索姓名"
           value={searchDraft}

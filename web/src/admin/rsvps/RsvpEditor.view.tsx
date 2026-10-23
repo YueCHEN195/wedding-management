@@ -92,6 +92,7 @@ export function RsvpEditor({ model }: { model: RsvpsModel }) {
         <Alert type="warning" title="宾客已归档，请先恢复宾客；当前草稿仍保留" />
       )}
       <Form
+        autoComplete="off"
         id={FORM_ID}
         form={form}
         layout="vertical"
@@ -138,6 +139,7 @@ export function RsvpEditor({ model }: { model: RsvpsModel }) {
           ]}
         >
           <Input
+            autoComplete="off"
             inputMode="numeric"
             maxLength={3}
             disabled={save.isPending || attending !== 'yes'}
@@ -162,6 +164,7 @@ export function RsvpEditor({ model }: { model: RsvpsModel }) {
           ]}
         >
           <Input
+            autoComplete="off"
             inputMode="numeric"
             maxLength={3}
             disabled={save.isPending || attending !== 'yes'}

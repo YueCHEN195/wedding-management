@@ -22,8 +22,9 @@ export function RsvpTable({ model }: { model: RsvpsModel }) {
       fixed: 'left',
       render: (_, r) => (
         <div className="rsvp-identity">
+          <span className="rsvp-id">{r.guestId == null ? '未关联' : `#${r.guestId}`}</span>
           <TableText value={r.guestName} />
-          <span className="rsvp-id">#{r.id}</span>
+          <span className="rsvp-id">回执 #{r.id}</span>
         </div>
       ),
     },

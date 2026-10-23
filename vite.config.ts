@@ -5,8 +5,19 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: 'web',
+  // Separate development, builds and --mode verification servers to avoid cache replacement.
+  cacheDir: `${root}node_modules/.vite/${mode}`,
+  optimizeDeps: {
+    include: [
+      'echarts-for-react/esm/core',
+      'echarts/core',
+      'echarts/charts',
+      'echarts/components',
+      'echarts/renderers',
+    ],
+  },
   publicDir: fileURLToPath(new URL('./public', import.meta.url)),
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -26,4 +37,4 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-});
+}));

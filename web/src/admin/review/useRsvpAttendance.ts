@@ -18,13 +18,17 @@ export function useRsvpAttendance(
       return;
     }
     if (waitingForName || !query.isSuccess) return;
+    const autoNew =
+      selection == null && query.data.length > 0 && query.data.every((guest) => guest.checkedIn);
+    const choice = autoNew ? 'new' : selection;
+    if (autoNew) form.setFieldValue('guestId', 'new');
     const guest =
-      typeof selection === 'number'
-        ? query.data.find((g) => g.id === selection)
-        : selection !== 'new' && query.data.length === 1 && !query.data[0].checkedIn
+      typeof choice === 'number'
+        ? query.data.find((g) => g.id === choice)
+        : choice !== 'new' && query.data.length === 1 && !query.data[0].checkedIn
           ? query.data[0]
           : undefined;
-    const identity = JSON.stringify([name, selection === 'new' ? 'new' : (guest?.id ?? null)]);
+    const identity = JSON.stringify([name, choice === 'new' ? 'new' : (guest?.id ?? null)]);
     // 只在换人或首次打开时带入，后台刷新不能覆盖工作人员已修改的人数。
     if (lastIdentity.current === identity) return;
     lastIdentity.current = identity;

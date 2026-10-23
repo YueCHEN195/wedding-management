@@ -12,6 +12,7 @@ export function RsvpFilters({ model }: { model: RsvpsModel }) {
     <section className="rsvp-filters" aria-label="回执搜索与筛选">
       <div className="admin-filter-row">
         <Input.Search
+          autoComplete="off"
           aria-label="搜索回执姓名"
           placeholder="搜索姓名"
           value={searchDraft}

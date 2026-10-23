@@ -101,7 +101,7 @@ export const api = {
   logout: () => apiFetch<boolean>('/api/auth/logout', { method: 'POST' }),
 
   guests: {
-    workbench: (p: { keyword?: string; status?: ReviewGuestStatus; side?: Side; page?: number; pageSize?: number }) =>
+    workbench: (p: { guestId?: number; keyword?: string; status?: ReviewGuestStatus; side?: Side; page?: number; pageSize?: number }) =>
       apiFetch<Paginated<ReviewGuestRow>>(`/api/guests/workbench${qs(p)}`),
     staffList: (p: GuestListParams) => apiFetch<Paginated<StaffGuestDTO>>(`/api/guests${qs(p)}`),
     staffDetail: (id: number) => apiFetch<StaffGuestDetailDTO>(`/api/guests/${id}/detail`),

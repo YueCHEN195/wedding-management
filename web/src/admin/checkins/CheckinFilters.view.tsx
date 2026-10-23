@@ -11,6 +11,7 @@ export function CheckinFilters({ model }: { model: CheckinsModel }) {
     <section aria-label="签到搜索与筛选">
       <div className="admin-filter-row">
         <Input.Search
+          autoComplete="off"
           aria-label="搜索签到姓名"
           placeholder="搜索姓名"
           allowClear

@@ -8,9 +8,9 @@ export type Attending = 'yes' | 'no' | 'maybe';
 export type RsvpSource = 'link' | 'universal';
 export type CheckinSource = 'self' | 'manual';
 export type CheckinStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
-/** 现场核对后明确新建的另一位宾客，分组用于同名辨识。 */
+/** 现场核对后明确新建的另一位宾客，可补充归属信息。 */
 export interface NewCheckinGuest {
-  groupName: string;
+  groupName?: string;
   side?: Side;
 }
 export interface PublicCheckinResult {
@@ -61,6 +61,7 @@ export interface GuestDTO {
   createdAt: number;
   updatedAt: number;
   attending: Attending | null;
+  checkedIn?: boolean;
 }
 
 export interface GuestDetailDTO {

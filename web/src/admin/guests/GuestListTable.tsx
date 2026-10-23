@@ -12,7 +12,7 @@ const invitationTone: Record<GuestStatus, StatusTone> = {
   pending: 'neutral',
   sent: 'info',
   viewed: 'info',
-  rsvp: 'success',
+  rsvp: 'info',
 };
 type Props = Pick<
   GuestManagementModel,
@@ -37,6 +37,7 @@ export function GuestListTable({ model }: { model: Props }) {
       fixed: 'left',
       render: (_, g) => (
         <div className="guest-name-cell">
+          <span className="guest-muted">#{g.id}</span>
           <Tooltip
             title={[g.name, g.salutation].filter(Boolean).join(' · ')}
             trigger={['hover', 'focus']}
@@ -45,7 +46,6 @@ export function GuestListTable({ model }: { model: Props }) {
               <span className="guest-name-label">{g.name}</span>
             </Button>
           </Tooltip>
-          <span className="guest-muted">#{g.id}</span>
         </div>
       ),
     },
@@ -73,15 +73,18 @@ export function GuestListTable({ model }: { model: Props }) {
       title: '邀请 / 回执',
       width: 120,
       render: (_, g) => (
-        <StatusTag tone={g.archivedAt ? 'inactive' : invitationTone[g.status]}>
-          {g.archivedAt ? '已归档' : STATUS_LABEL[g.status]}
+        <StatusTag
+          tone={g.archivedAt ? 'inactive' : g.checkedIn ? 'success' : invitationTone[g.status]}
+        >
+          {g.archivedAt ? '已归档' : g.checkedIn ? '已出席' : STATUS_LABEL[g.status]}
         </StatusTag>
       ),
     },
     {
       title: '是否出席',
       width: 100,
-      render: (_, g) => (g.attending ? ATTENDING_LABEL[g.attending] : '未填回执'),
+      render: (_, g) =>
+        g.checkedIn ? '已出席' : g.attending ? ATTENDING_LABEL[g.attending] : '未填回执',
     },
     ...(params.archived
       ? [{ title: '归档时间', dataIndex: 'archivedAt', width: 160, render: formatDateTime }]
@@ -99,7 +102,7 @@ export function GuestListTable({ model }: { model: Props }) {
       fixed: 'right',
       render: (_, g) => (
         <Space size="small">
-          {g.archivedAt == null && (
+          {g.archivedAt == null && !g.checkedIn && (
             <Button
               type="link"
               onClick={() => {

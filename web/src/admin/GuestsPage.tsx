@@ -1,3 +1,4 @@
+import { RefreshButton } from './components/RefreshButton';
 import { useCurrentUser } from '@/api/useCurrentUser';
 import { Alert, Button, Dropdown, Image, Modal, Space, Typography, Upload } from 'antd';
 import { DownloadOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons';
@@ -105,6 +106,12 @@ function AdminGuestsPage() {
           >
             <Button icon={<DownloadOutlined aria-hidden />}>导出 / 下载 ▾</Button>
           </Dropdown>
+          <RefreshButton
+            loading={list.isFetching}
+            onRefresh={() => {
+              void list.refetch();
+            }}
+          />
         </Space>
       </div>
       {params.archived && (

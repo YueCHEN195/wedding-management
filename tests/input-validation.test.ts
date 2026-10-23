@@ -170,3 +170,29 @@ test('界面按实际输入精确换算金额和人数，非法新输入不能�
   for (const v of ['0','1','20']) assert.equal(parseHeadcount(v), Number(v));
   for (const v of ['1.5','21','-1','','1e1',null]) assert.equal(parseHeadcount(v), null);
 });
+
+
+test('手机号可留空或填写11位大陆号码，新增与修改均拒绝非法格式且不落库', async () => {
+  for (const phone of [
+    '12345678901',
+    '1380013800',
+    '138001380000',
+    '+8613800138000',
+    '13800138abc',
+  ]) {
+    const before = snapshot();
+    assert.equal((await request('/api/guests', 'POST', { name: '手机校验', phone })).status, 400);
+    assert.deepEqual(snapshot(), before);
+  }
+  const created = await request('/api/guests', 'POST', {
+    name: '手机校验',
+    phone: ' 13800138000 ',
+  });
+  assert.equal(created.status, 200);
+  assert.equal(created.body.data.phone, '13800138000');
+  const id = created.body.data.id;
+  const before = snapshot();
+  assert.equal((await request(`/api/guests/${id}`, 'PATCH', { phone: '123' })).status, 400);
+  assert.deepEqual(snapshot(), before);
+  assert.equal((await request(`/api/guests/${id}`, 'PATCH', { phone: '' })).body.data.phone, null);
+});

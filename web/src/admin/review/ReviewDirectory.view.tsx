@@ -1,3 +1,4 @@
+import { RefreshButton } from '../components/RefreshButton';
 import { StatusTag } from '../components/StatusTag';
 import '../components/filter-bar.css';
 import { Alert, Button, Empty, Input, Select, Tabs, Tooltip } from 'antd';
@@ -32,6 +33,15 @@ export function ReviewDirectoryView({
   return (
     <section className="review-directory" aria-label="全部宾客查询">
       <Tabs
+        tabBarExtraContent={
+          <RefreshButton
+            compact
+            loading={query.isFetching}
+            onRefresh={() => {
+              void query.refetch();
+            }}
+          />
+        }
         activeKey={status ?? 'all'}
         onChange={(v) => {
           setStatus(v === 'all' ? undefined : (v as ReviewGuestStatus));
@@ -46,6 +56,7 @@ export function ReviewDirectoryView({
       />
       <div className="admin-filter-row review-filterbar">
         <Input.Search
+          autoComplete="off"
           aria-label="搜索姓名或分组"
           placeholder="搜索姓名 / 分组"
           allowClear
@@ -109,18 +120,7 @@ export function ReviewDirectoryView({
         rowClassName={(r) =>
           r.pendingId != null && r.pendingId === selectedId ? 'review-selected-row' : ''
         }
-        empty={
-          query.isError ? (
-            '连接失败，不能判断名单是否为空'
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={
-                keyword || status || side ? '没有符合条件的宾客' : '还没有宾客档案或待审核提交'
-              }
-            />
-          )
-        }
+        empty={<DirectoryEmpty model={model} />}
         scrollX={admin ? 1104 : 864}
         pagination={{
           current: page,
@@ -152,7 +152,9 @@ function reviewDirectoryColumns(
       render: (_, r) => (
         <Tooltip title={r.name} trigger={['hover', 'focus']}>
           <Button className="review-directory-name" type="link" onClick={() => setSelected(r)}>
-            <span>{r.name}</span>
+            <span>
+              {r.guestId == null ? '未关联' : `#${r.guestId}`} · {r.name}
+            </span>
           </Button>
         </Tooltip>
       ),
@@ -236,4 +238,33 @@ function reviewDirectoryColumns(
       ),
     },
   ];
+}
+
+function DirectoryEmpty({
+  model: { query, keyword, side, status },
+}: {
+  model: ReviewDirectoryModel;
+}) {
+  if (query.isError)
+    return (
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="连接失败，不能判断名单是否为空" />
+    );
+  if (keyword || side)
+    return (
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有符合条件的宾客">
+        <p className="review-connection">试试其他姓名，或重置筛选。</p>
+      </Empty>
+    );
+  const messages = {
+    confirmed: ['还没有已签到宾客', '现场确认到场后，宾客和实到人数会显示在这里。'],
+    pending: ['当前没有待审核宾客', '新的扫码提交会实时出现在左侧队列。'],
+    unconfirmed: ['当前没有未签到宾客', '可通过「查人 / 手动补录」登记现场来宾。'],
+    all: ['还没有宾客档案或待审核提交', '可通过「查人 / 手动补录」登记现场来宾。'],
+  };
+  const [title, description] = messages[status ?? 'all'];
+  return (
+    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={title}>
+      <p className="review-connection">{description}</p>
+    </Empty>
+  );
 }

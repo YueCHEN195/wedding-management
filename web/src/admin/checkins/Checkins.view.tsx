@@ -1,3 +1,5 @@
+import '../components/table-toolbar.css';
+import { RefreshButton } from '../components/RefreshButton';
 import { Alert, Button } from 'antd';
 import { PageHeader } from '../components/PageHeader';
 import { RecordAction, RecordHistory } from '../components/RecordAction';
@@ -13,7 +15,7 @@ export function CheckinsView({ model }: { model: CheckinsModel }) {
     <div className="checkin-page">
       <PageHeader title="签到记录" description="追溯现场签到，补记或更正实际到场人数。" />
       <CheckinFilters model={model} />
-      <div className="checkin-list-meta">
+      <div className="checkin-list-meta admin-table-toolbar">
         <span>
           {list.data
             ? `当前范围 ${list.data.total} 条签到${params.keyword || params.status ? ' · 已筛选' : ''}`
@@ -21,7 +23,15 @@ export function CheckinsView({ model }: { model: CheckinsModel }) {
               ? '签到记录暂不可用'
               : '正在读取签到记录…'}
         </span>
-        <span role="status">{list.isFetching && !list.isPending ? '正在更新…' : ''}</span>
+        <div className="admin-table-actions">
+          <span role="status">{list.isFetching && !list.isPending ? '正在更新…' : ''}</span>
+          <RefreshButton
+            loading={list.isFetching}
+            onRefresh={() => {
+              void list.refetch();
+            }}
+          />
+        </div>
       </div>
       {list.isError && (
         <Alert
