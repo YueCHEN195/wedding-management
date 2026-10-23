@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Popover, Segmented, Space } from 'antd';
+import { Alert, Button, Popover, Space } from 'antd';
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ReviewDirectory } from './components/ReviewDirectory';
 import { CheckinEntry } from './components/CheckinEntry';
@@ -13,7 +13,6 @@ import './review.css';
 export function ReviewPage() {
   const model = useReviewWorkbench();
   const [qrOpen, setQrOpen] = useState(false);
-  const [mobilePanel, setMobilePanel] = useState('queue');
   const [overviewOpen, setOverviewOpen] = useState(false);
   const {
     recordAction,
@@ -114,19 +113,7 @@ export function ReviewPage() {
           <ReviewSummary model={model} />
         </div>
       )}
-      <Segmented
-        className="review-mobile-panels"
-        block
-        aria-label="现场审核模块"
-        value={mobilePanel}
-        onChange={setMobilePanel}
-        disabled={saving}
-        options={[
-          { label: `待审核${pending.data ? `（${pending.data.length}）` : ''}`, value: 'queue' },
-          { label: '宾客名单', value: 'directory' },
-        ]}
-      />
-      <div className="review-grid" data-mobile-panel={mobilePanel}>
+      <div className="review-grid">
         <ReviewQueue model={model} />
         <ReviewDirectory
           admin={me.data?.role === 'admin'}

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { after, beforeEach, test } from 'node:test';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -22,12 +23,19 @@ const app = new Hono().route('/api/guests', guestRoutes).route('/api/gifts', gif
 app.onError((_, c) => c.json({ ok: false, error: { code: 'INTERNAL' } }, 500));
 const cookie = `wedding_session=${await createToken({ id: 1, username: 'admin', role: 'admin' })}`;
 let ip = 0;
+function rsvpVersion(path: string, method: string): Record<string, string> {
+  if (method !== 'PATCH' || !/^\/api\/(rsvps|guests)\/\d+$/.test(path)) return {};
+  const table = path.includes('/guests/') ? 'guests' : 'rsvps';
+  const row = sqlite.prepare(`SELECT updated_at FROM ${table} WHERE id=?`).get(Number(path.split('/').pop())) as { updated_at: number } | undefined;
+  return { 'If-Match': String(row?.updated_at ?? 0) };
+}
 async function request(path: string, method = 'GET', body?: unknown) {
+  if (path === '/api/gifts' && method === 'POST' && body && typeof body === 'object' && !Array.isArray(body)) body = { submissionKey: randomUUID(), ...body };
   if (method === 'PATCH' && /^\/api\/gifts\/\d+$/.test(path) && body && typeof body === 'object' && !Array.isArray(body)) {
     const current = sqlite.prepare('SELECT version FROM gifts WHERE id=?').get(Number(path.split('/').pop())) as any;
     body = { expectedVersion: current?.version ?? 1, reason: '验收更正', ...body };
   }
-  const response = await app.request(path, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': `198.51.100.${++ip}` }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  const response = await app.request(path, { method, headers: { ...rsvpVersion(path, method), Cookie: cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': `198.51.100.${++ip}` }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
   return { status: response.status, body: await response.json() as any };
 }
 function guest(name = '校验验收') {

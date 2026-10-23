@@ -8,6 +8,11 @@
   --invite-intro-name-delay: 700ms;
   --invite-intro-brand-delay: 400ms;
   --invite-copy-duration: 900ms;
+  /* Approved cover transition geometry; native scrolling remains in control. */
+  --invite-turn-photo-shift: 84px;
+  --invite-turn-photo-scale: 0.03;
+  --invite-turn-copy-shift: -28px;
+  --invite-turn-copy-fade: 1.7;
   --invite-cover-letter-spacing: 0.08em;
   --invite-cover-placeholder-size: 80px;
   --invite-cover-placeholder-opacity: 0.12;
@@ -34,6 +39,9 @@
   display: grid;
   place-items: center;
   animation: invite-aperture var(--invite-aperture-duration) var(--guest-ease) both;
+  transform: translateY(calc(var(--invite-turn-progress, 0) * var(--invite-turn-photo-shift)))
+    scale(calc(1 + var(--invite-turn-progress, 0) * var(--invite-turn-photo-scale)));
+  transform-origin: center bottom;
 }
 .guest-invite .invite-cover-visual img {
   width: 100%;
@@ -73,6 +81,8 @@
 .guest-invite .invite-cover-copy {
   margin-top: auto;
   padding-top: var(--guest-space-10);
+  opacity: max(0, calc(1 - var(--invite-turn-progress, 0) * var(--invite-turn-copy-fade)));
+  transform: translateY(calc(var(--invite-turn-progress, 0) * var(--invite-turn-copy-shift)));
 }
 .guest-invite .invite-cover-copy h1 {
   font-size: var(--invite-cover-title);
@@ -169,6 +179,11 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .guest-invite .invite-cover-visual,
+  .guest-invite .invite-cover-copy {
+    transform: none;
+    opacity: 1;
+  }
   .guest-invite .invite-cover-visual,
   .guest-invite .invite-cover-visual img,
   .guest-invite .invite-cover-copy h1,

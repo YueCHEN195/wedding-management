@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { createHash, randomBytes } from 'node:crypto';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { db, sqlite } from '../db/client';
 import { guests, rsvps } from '../db/schema';
 import { rsvpToDTO } from '../lib/dto';
@@ -42,14 +42,14 @@ function submitRsvp(opts: {
           headcount: opts.headcount,
           childrenCount: opts.childrenCount,
           message: opts.message,
-          updatedAt: ts,
+          updatedAt: Math.max(ts, existing.updatedAt + 1),
         })
         .where(eq(rsvps.id, existing.id))
         .run();
-      db.update(guests).set({ status: 'rsvp', updatedAt: ts }).where(eq(guests.id, opts.guestId)).run();
+      db.update(guests).set({ status: 'rsvp', updatedAt: sql`max(${guests.updatedAt} + 1, ${ts})` }).where(eq(guests.id, opts.guestId)).run();
       return rsvpToDTO(db.select().from(rsvps).where(eq(rsvps.id, existing.id)).get()!);
     }
-    db.update(guests).set({ status: 'rsvp', updatedAt: ts }).where(eq(guests.id, opts.guestId)).run();
+    db.update(guests).set({ status: 'rsvp', updatedAt: sql`max(${guests.updatedAt} + 1, ${ts})` }).where(eq(guests.id, opts.guestId)).run();
   }
   const row = db
     .insert(rsvps)
@@ -111,7 +111,7 @@ inviteRoutes.post('/rsvp', async (c) => {
       headcount: body.attending === 'yes' ? body.headcount : 0,
       childrenCount: body.attending === 'yes' ? body.childrenCount : 0,
       message: body.message || null,
-      updatedAt: ts,
+      updatedAt: existing ? Math.max(ts, existing.updatedAt + 1) : ts,
     };
     const row = existing
       ? tx.update(rsvps).set(values).where(eq(rsvps.id, existing.id)).returning().get()!
@@ -128,7 +128,7 @@ inviteRoutes.get('/:token', (c) => {
   if (!guest || guest.archivedAt != null) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '请柬链接已停用或无效，请联系新人' } }, 404);
   if (guest.status === 'pending' || guest.status === 'sent') {
     db.update(guests)
-      .set({ status: 'viewed', viewedAt: guest.viewedAt ?? now(), updatedAt: now() })
+      .set({ status: 'viewed', viewedAt: guest.viewedAt ?? now(), updatedAt: Math.max(now(), guest.updatedAt + 1) })
       .where(eq(guests.id, guest.id))
       .run();
   }

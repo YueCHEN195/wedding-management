@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { MAX_GIFT_CENTS, MAX_GROUP_LENGTH, MAX_HEADCOUNT, MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '../../shared/constraints';
 
 export class InputError extends Error { readonly code = 'VALIDATION'; }
+export class WriteConflictError extends Error { readonly code = 'VERSION_CONFLICT'; }
 export function inputErrorHandler(err: Error, c: Context) {
+  if (err instanceof WriteConflictError) return c.json({ ok: false, error: { code: err.code, message: err.message } }, 409);
   if (err instanceof InputError) return c.json({ ok: false, error: { code: err.code, message: err.message } }, 400);
   throw err;
 }
@@ -38,7 +40,7 @@ export function normalizedRsvp(value: z.infer<typeof rsvpInputSchema>) {
 }
 const money = z.number().int().safe().min(1).max(MAX_GIFT_CENTS);
 const method = z.enum(['cash', 'wechat', 'alipay']);
-export const giftCreateSchema = z.object({ guestName: name, guestId: z.number().int().positive().safe().nullable().optional(),
+export const giftCreateSchema = z.object({ submissionKey: z.uuid(), guestName: name, guestId: z.number().int().positive().safe().nullable().optional(),
   amount: money, method: method.default('cash'), note: optionalText(MAX_TEXT_LENGTH) }).strict();
 export const giftPatchSchema = z.object({ amount: money.optional(), method: method.optional(), note: optionalText(MAX_TEXT_LENGTH).optional(),
   expectedVersion: z.number().int().positive().safe(), reason: z.string().trim().min(1).max(200) }).strict()

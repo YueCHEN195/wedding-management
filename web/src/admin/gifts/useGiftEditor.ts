@@ -23,6 +23,7 @@ export function useGiftEditor() {
   const [nameComposing, setNameComposing] = useState(false);
   const [editing, setEditing] = useState<GiftDTO | null>(null);
   const [creating, setCreating] = useState(false);
+  const [submissionKey, setSubmissionKey] = useState('');
   const [form] = Form.useForm<GiftFormValues>();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -91,7 +92,7 @@ export function useGiftEditor() {
         method: v.method,
         note: v.note,
       };
-      if (!editing) return api.gifts.create(payload);
+      if (!editing) return api.gifts.create({ ...payload, submissionKey });
       const patch = {
         ...(payload.amount !== editing.amount ? { amount: payload.amount } : {}),
         ...(payload.method !== editing.method ? { method: payload.method } : {}),
@@ -121,6 +122,7 @@ export function useGiftEditor() {
         'record-history',
         'action-preview',
         'gift-current',
+        'review-directory',
       ])
         void qc.invalidateQueries({ queryKey: [key] });
     },
@@ -147,6 +149,7 @@ export function useGiftEditor() {
     });
   };
   const openCreate = () => {
+    setSubmissionKey(crypto.randomUUID());
     setNameComposing(false);
     setDirty(false);
     save.reset();

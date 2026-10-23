@@ -20,8 +20,13 @@ const app = new Hono().route('/api/lifecycle', lifecycleRoutes).route('/api/gues
 app.onError((_, c) => c.json({ ok: false, error: { code: 'INTERNAL', message: '写入失败' } }, 500));
 const cookie = `wedding_session=${await createToken({ id: 1, username: 'admin', role: 'admin' })}`;
 let ip = 0;
+function rsvpVersion(path: string, method: string): Record<string, string> {
+  if (method !== 'PATCH' || !/^\/api\/rsvps\/\d+$/.test(path)) return {};
+  const row = sqlite.prepare('SELECT updated_at FROM rsvps WHERE id=?').get(Number(path.split('/').pop())) as { updated_at: number } | undefined;
+  return { 'If-Match': String(row?.updated_at ?? 0) };
+}
 async function request(path: string, method = 'GET', body?: object) {
-  const response = await app.request(path, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json',
+  const response = await app.request(path, { method, headers: { ...rsvpVersion(path, method), Cookie: cookie, 'Content-Type': 'application/json',
     'X-Forwarded-For': `127.0.1.${++ip}` }, ...(body ? { body: JSON.stringify(body) } : {}) });
   return { status: response.status, body: await response.json() as any };
 }
@@ -52,7 +57,7 @@ function delayedRequest(path: string, method: string, body: object) {
     controller.enqueue(new TextEncoder().encode(JSON.stringify(body))); controller.close();
   }; } });
   const promise = app.request(new Request('http://localhost'+path, { method,
-    headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': `127.0.1.${++ip}` },
+    headers: { ...rsvpVersion(path, method), Cookie: cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': `127.0.1.${++ip}` },
     body: stream, duplex: 'half' } as RequestInit));
   return { promise, release };
 }

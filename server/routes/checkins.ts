@@ -67,9 +67,11 @@ checkinRoutes.get('/pending', (c) => {
     .all();
   const candidatesByName = new Map<string, ReturnType<typeof findGuestCandidates>>();
   const data = all.map((r) => {
-    if (!candidatesByName.has(r.guestName)) candidatesByName.set(r.guestName, findGuestCandidates(r.guestName));
-    const guestCandidates = candidatesByName.get(r.guestName)!;
-    return { ...checkinToDTO(r), guestArchived: r.guestId != null && db.select().from(guests).where(eq(guests.id, r.guestId)).get()?.archivedAt != null, guestCandidates, requiresGuestSelection: guestCandidates.length > 1 };
+    const linkedGuest = r.guestId == null ? undefined : db.select().from(guests).where(eq(guests.id, r.guestId)).get();
+    const guestName = linkedGuest?.name ?? r.guestName;
+    if (!candidatesByName.has(guestName)) candidatesByName.set(guestName, findGuestCandidates(guestName));
+    const guestCandidates = candidatesByName.get(guestName)!;
+    return { ...checkinToDTO(r), guestName, guestArchived: linkedGuest?.archivedAt != null, guestCandidates, requiresGuestSelection: guestCandidates.length > 1 };
   });
   return c.json({ ok: true, data });
 });

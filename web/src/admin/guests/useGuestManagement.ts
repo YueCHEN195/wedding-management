@@ -8,6 +8,7 @@ import type { RecordActionTarget } from '../components/RecordAction';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { adminFeedback } from '../theme';
 import { api, ApiError, type GuestListParams } from '@/api/client';
+import { useGuestDraft } from './useGuestDraft';
 
 export function useGuestManagement() {
   const qc = useQueryClient();
@@ -32,6 +33,7 @@ export function useGuestManagement() {
     queryFn: () => api.guests.detail(selectedId!),
     enabled: selectedId != null && mode != null,
   });
+  const { baseGuest, setBaseGuest, rechecking, recheck } = useGuestDraft(form, detail);
   const guest = detail.data?.guest;
   const editing = mode === 'create' || mode === 'edit';
 
@@ -60,7 +62,9 @@ export function useGuestManagement() {
   };
   const save = useMutation({
     mutationFn: (values: Partial<GuestDTO>) =>
-      mode === 'edit' ? api.guests.update(selectedId!, values) : api.guests.create(values),
+      mode === 'edit'
+        ? api.guests.update(selectedId!, values, baseGuest!.updatedAt)
+        : api.guests.create(values),
     onSuccess: (savedGuest) => {
       const created = mode === 'create';
       setDirty(false);
@@ -75,7 +79,12 @@ export function useGuestManagement() {
       });
     },
   });
-  const canLeave = useUnsavedChanges({ dirty, busy: save.isPending });
+  const conflict =
+    save.error instanceof ApiError && ['VERSION_CONFLICT', 'CONFLICT'].includes(save.error.code);
+  const recheckDraft = async () => {
+    if (await recheck()) save.reset();
+  };
+  const canLeave = useUnsavedChanges({ dirty, busy: save.isPending || rechecking });
   useEffect(() => registerNavigationGuard(canLeave), [registerNavigationGuard, canLeave]);
   const closeDrawer = async () => {
     if (!(await canLeave())) return;
@@ -115,6 +124,7 @@ export function useGuestManagement() {
         return;
       }
       const { name, salutation, phone, groupName, side, note } = latest.guest;
+      setBaseGuest(latest.guest);
       form.setFieldsValue({ name, salutation, phone, groupName, side, note });
     } catch {
       /* Query owns the retryable error; no stale row snapshot is edited. */
@@ -134,7 +144,9 @@ export function useGuestManagement() {
     setParams((current) => ({ ...current, ...patch, page: 1 }));
   const filtered = !!(params.keyword || params.status || params.groupName || params.side);
   const readyToEdit =
-    mode === 'create' || (!!guest && !guest.archivedAt && !detail.isError && !initializing);
+    !rechecking &&
+    !conflict &&
+    (mode === 'create' || (!!guest && !guest.archivedAt && !detail.isError && !initializing));
 
   const importGuests = async (file: File) => {
     if (importLock.current) return null;
@@ -161,6 +173,9 @@ export function useGuestManagement() {
     }
   };
   return {
+    conflict,
+    rechecking,
+    recheckDraft,
     params,
     setParams,
     action,

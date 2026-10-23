@@ -4,6 +4,7 @@ import { parseGiftYuan } from '@shared/numericInput';
 import type { GiftMethod } from '@shared/types';
 import { METHOD_LABEL, yuan } from '@/lib/format';
 import { AdminDrawer } from '../components/AdminDrawer';
+import './gifts.css';
 import { GiftCandidateSelection, GiftConflictFeedback } from './GiftFeedback.view';
 import type { GiftEditorModel, GiftFormValues } from './useGiftEditor';
 const FORM_ID = 'gift-editor';
@@ -77,6 +78,7 @@ export function GiftEditor({ model }: { model: GiftEditorModel }) {
         form={form}
         disabled={save.isPending}
         layout="vertical"
+        scrollToFirstError={{ block: 'center', focus: true }}
         onFinish={submit}
         onValuesChange={() => setDirty(true)}
         initialValues={{ method: 'cash' }}

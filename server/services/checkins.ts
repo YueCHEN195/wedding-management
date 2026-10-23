@@ -113,10 +113,19 @@ export function confirmCheckin(id: number, input: z.infer<typeof confirmCheckinS
     const existing = db.select().from(checkins).where(eq(checkins.id, id)).get();
     if (!existing) throw new CheckinError('NOT_FOUND', '提交不存在', 404);
     if (existing.status !== 'pending') throw new CheckinError('CONFLICT', '该提交已处理，请查看签到记录');
-    if (existing.guestId != null && db.select().from(guests).where(eq(guests.id, existing.guestId)).get()?.archivedAt != null) {
+    const linkedGuest = existing.guestId == null ? undefined : db.select().from(guests).where(eq(guests.id, existing.guestId)).get();
+    if (linkedGuest?.archivedAt != null) {
       throw new CheckinError('GUEST_ARCHIVED', '关联宾客已归档，请先由管理员恢复宾客，或驳回此提交');
     }
-    const matched = resolveGuest(existing.guestName, input);
+    if (existing.guestId != null && !linkedGuest)
+      throw new CheckinError('INVALID_GUEST', '原关联宾客不存在，请重新核对');
+    if (!input.newGuest && input.guestId == null && findGuestCandidates(linkedGuest?.name ?? existing.guestName).length > 1)
+      throw new CheckinError('AMBIGUOUS_GUEST', '存在同名宾客，请核对分组和回执后选择对应宾客');
+    // A name correction must never silently replace an already linked identity.
+    const matched = resolveGuest(linkedGuest?.name ?? existing.guestName, {
+      ...input,
+      guestId: input.newGuest ? undefined : input.guestId ?? linkedGuest?.id,
+    });
     rejectExisting(currentCheckin(matched.id, id));
     const row = db.update(checkins).set({ status: 'confirmed', confirmedAt: now(), guestId: matched.id, guestName: matched.name, note: input.note, actualHeadcount: input.actualHeadcount, actualChildrenCount: input.actualChildrenCount })
       .where(and(eq(checkins.id, id), eq(checkins.status, 'pending'))).returning().get();

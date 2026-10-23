@@ -109,8 +109,8 @@ export const api = {
     groups: () => apiFetch<string[]>('/api/guests/groups'),
     create: (data: Partial<GuestDTO>) =>
       apiFetch<GuestDTO>('/api/guests', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<GuestDTO>) =>
-      apiFetch<GuestDTO>(`/api/guests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<GuestDTO>, updatedAt: number) =>
+      apiFetch<GuestDTO>(`/api/guests/${id}`, { method: 'PATCH', headers: { 'If-Match': String(updatedAt) }, body: JSON.stringify(data) }),
     markSent: (id: number) => apiFetch<GuestDTO>(`/api/guests/${id}/mark-sent`, { method: 'POST' }),
     detail: (id: number) => apiFetch<GuestDetailDTO>(`/api/guests/${id}/detail`),
     import: async (file: File): Promise<ImportResult> => {
@@ -130,8 +130,9 @@ export const api = {
   rsvps: {
     list: (p: { keyword?: string; attending?: Attending; page?: number; pageSize?: number }) =>
       apiFetch<RsvpListDTO>(`/api/rsvps${qs(p)}`),
-    update: (id: number, data: Partial<RsvpDTO>) =>
-      apiFetch<RsvpDTO>(`/api/rsvps/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    get: (id: number) => apiFetch<RsvpDTO>(`/api/rsvps/${id}`),
+    update: (id: number, data: Partial<RsvpDTO>, updatedAt: number) =>
+      apiFetch<RsvpDTO>(`/api/rsvps/${id}`, { method: 'PATCH', headers: { 'If-Match': String(updatedAt) }, body: JSON.stringify(data) }),
   },
 
   lifecycle: {
@@ -161,7 +162,7 @@ export const api = {
   gifts: {
     list: (p: { state?: 'voided' | 'all'; method?: GiftMethod; keyword?: string; page?: number; pageSize?: number }) =>
       apiFetch<GiftListDTO>(`/api/gifts${qs(p)}`),
-    create: (data: { guestName: string; guestId?: number; amount: number; method: GiftMethod; note?: string }) =>
+    create: (data: { submissionKey: string; guestName: string; guestId?: number; amount: number; method: GiftMethod; note?: string }) =>
       apiFetch<GiftDTO>('/api/gifts', { method: 'POST', body: JSON.stringify(data) }),
     get: (id: number) => apiFetch<GiftDTO>(`/api/gifts/${id}`),
     update: (id: number, data: { amount?: number; method?: GiftMethod; note?: string | null; expectedVersion: number; reason: string }) =>

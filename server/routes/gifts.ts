@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import { and, desc, eq, isNull, isNotNull, like } from 'drizzle-orm';
-import { db, sqlite } from '../db/client';
-import { gifts, guests } from '../db/schema';
+import { db } from '../db/client';
+import { gifts } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { giftToDTO } from '../lib/dto';
-import { now, parsePage, str } from '../lib/util';
-import { enumQuery, giftCreateSchema, giftPatchSchema, GIFT_INPUT_MESSAGE, InputError, inputErrorHandler, parseId, parseInput } from '../lib/validation';
-import { editGift, GiftEditError, insertGiftWithAudit } from '../services/gifts';
+import { parsePage, str } from '../lib/util';
+import { enumQuery, giftCreateSchema, giftPatchSchema, GIFT_INPUT_MESSAGE, inputErrorHandler, parseId, parseInput } from '../lib/validation';
+import { createGift, editGift, GiftEditError } from '../services/gifts';
 import type { GiftMethod } from '../../shared/types';
 
 export const giftRoutes = new Hono<AppEnv>();
@@ -60,14 +60,8 @@ giftRoutes.get('/', (c) => {
 });
 
 giftRoutes.post('/', requireAdmin, async (c) => {
-  const body = parseInput(giftCreateSchema, await c.req.json().catch(() => null), GIFT_INPUT_MESSAGE);
-  const row = sqlite.transaction(() => {
-    if (body.guestId != null) {
-      const guest = db.select().from(guests).where(eq(guests.id, body.guestId)).get();
-      if (!guest || guest.name !== body.guestName) throw new InputError('所选宾客不存在或与姓名不符，请重新核对宾客编号');
-    }
-    return insertGiftWithAudit({ ...body, guestId: body.guestId ?? null, checkinId: null, recordedAt: now() }, c.get('user'), '管理员独立登记实收礼金');
-  }).immediate();
+  const body = parseInput(giftCreateSchema, await c.req.json().catch(() => null), GIFT_INPUT_MESSAGE + '；登记需有效提交标识，旧页面请刷新后重试');
+  const row = createGift(body, c.get('user'));
   return c.json({ ok: true, data: giftToDTO(row) });
 });
 

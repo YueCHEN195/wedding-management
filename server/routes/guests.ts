@@ -110,9 +110,11 @@ guestRoutes.patch('/:id', requireAdmin, async (c) => {
   if (!existing) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);
   if (existing.archivedAt != null) return c.json({ ok: false, error: { code: 'GUEST_ARCHIVED', message: '请先恢复已归档宾客再编辑' } }, 409);
   const body = parseInput(guestPatchSchema, await c.req.json().catch(() => null), GUEST_INPUT_MESSAGE);
-  const patch = { ...body, updatedAt: now() };
+  if (c.req.header('If-Match') !== String(existing.updatedAt))
+    return c.json({ ok: false, error: { code: 'VERSION_CONFLICT', message: '宾客档案已变化或缺少原版本，请保留修改并载入最新档案核对' } }, 409);
+  const patch = { ...body, updatedAt: Math.max(now(), existing.updatedAt + 1) };
 
-  const row = db.update(guests).set(patch).where(and(eq(guests.id, id), isNull(guests.archivedAt))).returning().get();
+  const row = db.update(guests).set(patch).where(and(eq(guests.id, id), eq(guests.updatedAt, existing.updatedAt), isNull(guests.archivedAt))).returning().get();
   if (!row) return c.json({ ok: false, error: { code: 'CONFLICT', message: '宾客已归档或变更，请刷新后重新核对' } }, 409);
   return c.json({ ok: true, data: guestToDTO(row) });
 });
@@ -129,7 +131,7 @@ guestRoutes.post('/:id/mark-sent', requireAdmin, (c) => {
     const hasRsvp = db.select({ id: rsvps.id }).from(rsvps).where(eq(rsvps.guestId, id)).get();
     return db.update(guests).set({
       status: hasRsvp ? 'rsvp' : existing.status === 'pending' ? 'sent' : existing.status,
-      invitedAt: existing.invitedAt ?? now(), updatedAt: now(),
+      invitedAt: existing.invitedAt ?? now(), updatedAt: Math.max(now(), existing.updatedAt + 1),
     }).where(eq(guests.id, id)).returning().get();
   }).immediate();
   if (!row) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '宾客不存在' } }, 404);

@@ -5,8 +5,12 @@ import type { LifecycleEntity } from '@shared/types';
 import type { RecordActionTarget } from './types';
 import { adminFeedback } from '../theme';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import type { AdminOutletContext } from '../AdminLayout';
 export function useRecordAction(target: RecordActionTarget, onClose: () => void) {
   const qc = useQueryClient();
+  const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
   const [form] = Form.useForm<{ reason: string }>();
   const preview = useQuery({
     queryKey: ['action-preview', target.entity, target.id, target.action],
@@ -57,6 +61,7 @@ export function useRecordAction(target: RecordActionTarget, onClose: () => void)
     dirty: typeof reason === 'string' && reason.length > 0,
     busy: submit.isPending,
   });
+  useEffect(() => registerNavigationGuard(canClose), [registerNavigationGuard, canClose]);
   const close = async () => {
     if (await canClose()) onClose();
   };

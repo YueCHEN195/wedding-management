@@ -33,6 +33,7 @@ const cookies = {
 };
 let ip = 0;
 async function request(path: string, method = 'GET', body?: object, role: 'admin' | 'staff' = 'admin') {
+  if (path === '/api/gifts' && method === 'POST' && body && typeof body === 'object' && !Array.isArray(body)) body = { submissionKey: randomUUID(), ...body };
   if (body && (path === '/api/checkins' || path.endsWith('/confirm'))) body = { actualHeadcount: 1, actualChildrenCount: 0, ...body };
   if (method === 'PATCH' && /^\/api\/gifts\/\d+$/.test(path) && body && typeof body === 'object' && !Array.isArray(body)) {
     const current = sqlite.prepare('SELECT version FROM gifts WHERE id=?').get(Number(path.split('/').pop())) as any;

@@ -30,6 +30,7 @@ type Props = Pick<
   | 'setDirty'
   | 'submit'
   | 'closeDrawer'
+  | 'afterDrawerClose'
 >;
 export function ReviewDrawer({ model }: { model: Props }) {
   const {
@@ -62,6 +63,9 @@ export function ReviewDrawer({ model }: { model: Props }) {
       title={manualOpen ? '查人 / 手动补录' : `核对签到 · ${confirming?.guestName ?? ''}`}
       extra={<span className="review-connection">{dirty ? '有未保存的填写' : '请核对后保存'}</span>}
       onClose={closeDrawer}
+      afterOpenChange={(open) => {
+        if (!open) model.afterDrawerClose();
+      }}
       mask={{ closable: !saving }}
       closable={!saving}
       keyboard={!saving}

@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useBlocker, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useCurrentUser } from '@/api/useCurrentUser';
@@ -8,14 +8,35 @@ export function useAdminNavigation() {
   const [logoutPending, setLogoutPending] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const logoutLock = useRef(false);
-  const navigationGuard = useRef<(() => Promise<boolean>) | null>(null);
+  const navigationGuards = useRef(new Set<() => Promise<boolean>>());
   const registerNavigationGuard = useCallback((guard: () => Promise<boolean>) => {
-    navigationGuard.current = guard;
+    navigationGuards.current.add(guard);
     return () => {
-      if (navigationGuard.current === guard) navigationGuard.current = null;
+      navigationGuards.current.delete(guard);
     };
   }, []);
-  const canNavigate = async () => !navigationGuard.current || (await navigationGuard.current());
+  const canNavigate = useCallback(async () => {
+    for (const guard of navigationGuards.current) {
+      if (!(await guard())) return false;
+    }
+    return true;
+  }, []);
+  const blocker = useBlocker(
+    ({ historyAction }) => historyAction === 'POP' && navigationGuards.current.size > 0,
+  );
+  const checkingHistory = useRef(false);
+  useEffect(() => {
+    if (blocker.state !== 'blocked' || checkingHistory.current) return;
+    checkingHistory.current = true;
+    void canNavigate()
+      .then((allowed) => {
+        if (allowed) blocker.proceed();
+        else blocker.reset();
+      })
+      .finally(() => {
+        checkingHistory.current = false;
+      });
+  }, [blocker, canNavigate]);
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();

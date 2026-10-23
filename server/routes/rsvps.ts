@@ -1,17 +1,17 @@
 import { Hono } from 'hono';
-import { and, desc, eq, like } from 'drizzle-orm';
+import { and, desc, eq, like, sql } from 'drizzle-orm';
 import { db, sqlite } from '../db/client';
 import { guests, rsvps } from '../db/schema';
 import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { rsvpToDTO } from '../lib/dto';
 import { now, parsePage, str } from '../lib/util';
-import { enumQuery, inputErrorHandler, normalizedRsvp, parseId, parseInput, rsvpInputSchema, rsvpPatchSchema, RSVP_INPUT_MESSAGE } from '../lib/validation';
+import { enumQuery, inputErrorHandler, normalizedRsvp, parseId, parseInput, rsvpInputSchema, rsvpPatchSchema, RSVP_INPUT_MESSAGE, WriteConflictError } from '../lib/validation';
 
 export const rsvpRoutes = new Hono<AppEnv>();
 rsvpRoutes.use('*', requireAuth);
 rsvpRoutes.onError(inputErrorHandler);
 
-rsvpRoutes.get('/', (c) => {
+rsvpRoutes.get('/', requireAdmin, (c) => {
   const { page, pageSize, offset } = parsePage(c.req.url);
   const url = new URL(c.req.url);
   const keyword = str(url.searchParams.get('keyword'));
@@ -43,6 +43,14 @@ rsvpRoutes.get('/', (c) => {
   });
 });
 
+rsvpRoutes.get('/:id', requireAdmin, (c) => {
+  const row = db.select().from(rsvps).where(eq(rsvps.id, parseId(c.req.param('id')))).get();
+  if (!row) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '回执不存在' } }, 404);
+  const guestArchived = row.guestId != null && db.select().from(guests).where(eq(guests.id, row.guestId)).get()?.archivedAt != null;
+  c.header('Cache-Control', 'no-store');
+  return c.json({ ok: true, data: { ...rsvpToDTO(row), guestArchived } });
+});
+
 rsvpRoutes.patch('/:id', requireAdmin, async (c) => {
   const id = parseId(c.req.param('id'));
   const body = parseInput(rsvpPatchSchema, await c.req.json().catch(() => null), RSVP_INPUT_MESSAGE);
@@ -50,13 +58,15 @@ rsvpRoutes.patch('/:id', requireAdmin, async (c) => {
     const existing = db.select().from(rsvps).where(eq(rsvps.id, id)).get();
     if (!existing) return null;
     if (existing.guestId != null && db.select().from(guests).where(eq(guests.id, existing.guestId)).get()?.archivedAt != null) return null;
+    if (c.req.header('If-Match') !== String(existing.updatedAt))
+      throw new WriteConflictError('回执已更新或缺少原版本，请载入最新内容后重新核对；当前修改未保存');
     const values = normalizedRsvp(parseInput(rsvpInputSchema, {
       attending: existing.attending, headcount: existing.headcount, childrenCount: existing.childrenCount, message: existing.message, ...body,
     }, RSVP_INPUT_MESSAGE));
-    const patch = { ...values, updatedAt: now() };
+    const patch = { ...values, updatedAt: Math.max(now(), existing.updatedAt + 1) };
     const updated = db.update(rsvps).set(patch).where(eq(rsvps.id, id)).returning().get();
     if (existing.guestId != null) {
-      db.update(guests).set({ status: 'rsvp', updatedAt: patch.updatedAt }).where(eq(guests.id, existing.guestId)).run();
+      db.update(guests).set({ status: 'rsvp', updatedAt: sql`max(${guests.updatedAt} + 1, ${patch.updatedAt})` }).where(eq(guests.id, existing.guestId)).run();
     }
     return updated;
   }).immediate();

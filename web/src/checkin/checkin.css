@@ -33,7 +33,7 @@
   min-width: 0;
   background: var(--guest-paper);
   border-radius: var(--guest-radius-surface);
-  padding: var(--guest-space-8) var(--guest-space-6);
+  padding: var(--guest-space-6);
 }
 
 .guest-checkin p,
@@ -94,7 +94,7 @@
 }
 
 .guest-checkin .checkin-form {
-  margin-top: var(--guest-space-8);
+  margin-top: var(--guest-space-6);
 }
 
 .guest-checkin label {
@@ -150,6 +150,7 @@
 }
 
 .guest-checkin .checkin-primary {
+  position: relative;
   width: 100%;
   min-height: var(--guest-control-height);
   display: flex;
@@ -177,7 +178,8 @@
 }
 
 .guest-checkin .checkin-action-arrow {
-  margin-left: auto;
+  position: absolute;
+  right: var(--guest-space-4);
 }
 
 .guest-checkin :disabled {

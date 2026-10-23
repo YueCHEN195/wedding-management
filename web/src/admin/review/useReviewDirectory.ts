@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import type { AdminOutletContext } from '../AdminLayout';
+import { useGiftEditor } from '../gifts/useGiftEditor';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Form, message } from 'antd';
 import type { GuestDTO, ReviewGuestRow, ReviewGuestStatus, Side } from '@shared/types';
-import { api } from '@/api/client';
+import { api, ApiError } from '@/api/client';
+import { useGuestDraft } from '../guests/useGuestDraft';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { adminFeedback } from '../theme';
@@ -15,6 +19,8 @@ export interface ReviewDirectoryProps {
 }
 export function useReviewDirectory(admin: boolean) {
   const qc = useQueryClient();
+  const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
+  const giftEditor = useGiftEditor();
   const [keyword, setKeyword] = useState('');
   const { pending: keywordDebouncing } = useDebouncedValue(keyword);
   const searchPending = !!keyword && keywordDebouncing;
@@ -37,8 +43,10 @@ export function useReviewDirectory(admin: boolean) {
     queryFn: () => api.guests.detail(selected!.guestId!),
     enabled: admin && selected?.guestId != null,
   });
+  const { baseGuest, setBaseGuest, rechecking, recheck } = useGuestDraft(form, detail);
   const update = useMutation({
-    mutationFn: (v: Partial<GuestDTO>) => api.guests.update(selected!.guestId!, v),
+    mutationFn: (v: Partial<GuestDTO>) =>
+      api.guests.update(selected!.guestId!, v, baseGuest!.updatedAt),
     onSuccess: () => {
       for (const key of [
         'review-directory',
@@ -54,14 +62,21 @@ export function useReviewDirectory(admin: boolean) {
       message.success({ content: '宾客档案已保存', duration: adminFeedback.toastDuration });
     },
   });
+  const conflict =
+    update.error instanceof ApiError &&
+    ['VERSION_CONFLICT', 'CONFLICT'].includes(update.error.code);
+  const recheckDraft = async () => {
+    if (await recheck()) update.reset();
+  };
   const canLeave = useUnsavedChanges({
     dirty,
-    busy: update.isPending,
+    busy: update.isPending || rechecking,
     title: '宾客修改尚未保存',
     content: '关闭将丢弃本次档案修改。',
     okText: '丢弃修改',
     cancelText: '继续编辑',
   });
+  useEffect(() => registerNavigationGuard(canLeave), [registerNavigationGuard, canLeave]);
   const close = async () => {
     if (!(await canLeave())) return;
     setSelected(null);
@@ -70,11 +85,16 @@ export function useReviewDirectory(admin: boolean) {
     update.reset();
   };
   const openEdit = () => {
+    setBaseGuest(detail.data!.guest);
     form.setFieldsValue(detail.data!.guest);
     setEditing(true);
     update.reset();
   };
   return {
+    conflict,
+    rechecking,
+    recheckDraft,
+    giftEditor,
     keyword,
     searchPending,
     setKeyword,

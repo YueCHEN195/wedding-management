@@ -111,7 +111,7 @@ export function applyLifecycle(entity: LifecycleEntity, id: number, action: Life
     const ts = Date.now();
     const before = entity === 'guest' ? state.guest! : entity === 'checkin' ? state.checkin! : state.gift!;
     const after = entity === 'guest'
-      ? db.update(guests).set({ archivedAt: action === 'archive' ? ts : null, updatedAt: ts }).where(eq(guests.id, id)).returning().get()!
+      ? db.update(guests).set({ archivedAt: action === 'archive' ? ts : null, updatedAt: Math.max(ts, state.guest!.updatedAt + 1) }).where(eq(guests.id, id)).returning().get()!
       : entity === 'gift'
         ? db.update(gifts).set({ voidedAt: action === 'void' ? ts : null, version: state.gift!.version + 1 }).where(eq(gifts.id, id)).returning().get()!
         : db.update(checkins).set({ status: action === 'reject' ? 'rejected' : action === 'cancel' ? 'cancelled'

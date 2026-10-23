@@ -27,6 +27,7 @@ const cookies = {
 };
 let ip = 0;
 async function request(path: string, method = 'GET', body?: object, role: 'admin' | 'staff' = 'admin') {
+  if (path === '/api/gifts' && method === 'POST' && body && typeof body === 'object' && !Array.isArray(body)) body = { submissionKey: randomUUID(), ...body };
   const res = await app.request(path, { method, headers: { Cookie: cookies[role], 'Content-Type': 'application/json', 'X-Forwarded-For': `198.51.100.${++ip}` }, ...(body ? { body: JSON.stringify(body) } : {}) });
   return { status: res.status, body: await res.json() as any };
 }

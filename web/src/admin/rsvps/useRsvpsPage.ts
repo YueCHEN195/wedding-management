@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Form, message } from 'antd';
-import { api } from '@/api/client';
+import { api, ApiError } from '@/api/client';
 import { useOutletContext } from 'react-router-dom';
 import type { AdminOutletContext } from '../AdminLayout';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -48,11 +48,15 @@ export function useRsvpsPage() {
 
   const save = useMutation({
     mutationFn: (values: RsvpFormValues) =>
-      api.rsvps.update(editing!.id, {
-        ...values,
-        headcount: parseHeadcount(values.headcount)!,
-        childrenCount: parseHeadcount(values.childrenCount)!,
-      }),
+      api.rsvps.update(
+        editing!.id,
+        {
+          ...values,
+          headcount: parseHeadcount(values.headcount)!,
+          childrenCount: parseHeadcount(values.childrenCount)!,
+        },
+        editing!.updatedAt,
+      ),
     onSuccess: () => {
       message.success({
         content: '回执已保存，现场实到人数不受影响',
@@ -60,11 +64,58 @@ export function useRsvpsPage() {
       });
       setDirty(false);
       setEditing(null);
-      for (const key of ['rsvps', 'guests', 'guest-detail', 'checkin-candidates', 'stats']) {
+      for (const key of [
+        'rsvps',
+        'rsvp-current',
+        'guests',
+        'guest-detail',
+        'checkin-candidates',
+        'stats',
+        'review-directory',
+      ]) {
         void qc.invalidateQueries({ queryKey: [key] });
       }
     },
   });
+
+  const conflict = save.error instanceof ApiError && save.error.code === 'VERSION_CONFLICT';
+  const latest = useQuery({
+    queryKey: ['rsvp-current', editing?.id],
+    queryFn: () => api.rsvps.get(editing!.id),
+    enabled: !!editing && conflict,
+    staleTime: 0,
+  });
+  const recheckDraft = () => {
+    if (
+      !editing ||
+      !latest.data ||
+      latest.data.guestArchived ||
+      latest.isFetching ||
+      latest.isError
+    )
+      return;
+    const draft = form.getFieldsValue();
+    const attendanceChanged =
+      draft.attending !== editing.attending ||
+      parseHeadcount(draft.headcount) !== editing.headcount ||
+      parseHeadcount(draft.childrenCount) !== editing.childrenCount;
+    form.setFieldsValue({
+      ...(!attendanceChanged
+        ? {
+            attending: latest.data.attending,
+            headcount: String(latest.data.headcount),
+            childrenCount: String(latest.data.childrenCount),
+          }
+        : {}),
+      message:
+        (draft.message?.trim() || null) === (editing.message?.trim() || null)
+          ? latest.data.message
+          : draft.message,
+    });
+    setEditing(latest.data);
+    save.reset();
+    message.info('已保留你的修改并载入最新内容，请核对后重新保存');
+  };
 
   const openEdit = (r: RsvpDTO) => {
     if (r.guestArchived) return;
@@ -91,9 +142,12 @@ export function useRsvpsPage() {
     save.reset();
   };
   const submit = (values: RsvpFormValues) => {
-    if (editing && !editing.guestArchived && !save.isPending) save.mutate(values);
+    if (editing && !editing.guestArchived && !save.isPending && !conflict) save.mutate(values);
   };
   return {
+    conflict,
+    latest,
+    recheckDraft,
     params,
     setParams,
     searchDraft,

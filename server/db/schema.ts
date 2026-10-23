@@ -87,6 +87,8 @@ export const gifts = sqliteTable('gifts', {
   recordedAt: integer('recorded_at').notNull(),
   voidedAt: integer('voided_at'),
   version: integer('version').notNull().default(1),
+  submissionKeyHash: text('submission_key_hash').unique(),
+  submissionPayloadHash: text('submission_payload_hash'),
 });
 
 export type UserRow = typeof users.$inferSelect;

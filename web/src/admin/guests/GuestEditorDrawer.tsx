@@ -26,6 +26,9 @@ type Props = Pick<
   | 'setMedia'
   | 'setHistoryId'
   | 'setAction'
+  | 'conflict'
+  | 'rechecking'
+  | 'recheckDraft'
 >;
 export function GuestEditorDrawer({ model }: { model: Props }) {
   const {
@@ -119,7 +122,24 @@ export function GuestEditorDrawer({ model }: { model: Props }) {
         <Typography.Paragraph role="status">正在读取最新宾客档案…</Typography.Paragraph>
       )}
       {save.isError && (
-        <Alert type="error" showIcon title="本次修改尚未保存" description={save.error.message} />
+        <Alert
+          type="error"
+          showIcon
+          title="本次修改尚未保存"
+          description={save.error.message}
+          action={
+            model.conflict ? (
+              <Button
+                loading={model.rechecking}
+                onClick={() => {
+                  void model.recheckDraft();
+                }}
+              >
+                保留修改并载入最新档案
+              </Button>
+            ) : undefined
+          }
+        />
       )}
       {editing ? (
         <Form

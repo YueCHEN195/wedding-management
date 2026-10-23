@@ -7,6 +7,9 @@
   --surface-ticket-hover: #f4e8de;
   --surface-ticket-selected: #f0dacc;
   --review-row-height: 56px;
+  /* Stacked mobile modules keep usable bodies even in a short viewport. */
+  --review-mobile-queue-height: 240px;
+  --review-mobile-directory-height: 480px;
 }
 .review-drawer {
   --surface-summary: #efdfd3;
@@ -217,7 +220,6 @@
 .review-desktop-overview {
   flex-shrink: 0;
 }
-.review-mobile-panels,
 .review-mobile-overview-toggle {
   display: none;
 }
@@ -272,7 +274,7 @@
   display: flex;
   justify-content: center;
 }
-/* Narrow screens switch modules without losing their state; forms remain in the drawer. */
+/* Narrow screens show both modules in a scrollable workspace; no hidden module switch. */
 @media (max-width: 767px) {
   .review-heading p {
     display: none;
@@ -281,25 +283,18 @@
     display: none;
   }
   .review-grid {
-    display: flex;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--review-mobile-queue-height) minmax(
+        var(--review-mobile-directory-height),
+        1fr
+      );
+    overflow: auto;
   }
   .review-desktop-overview {
     display: none;
   }
-  .review-mobile-panels {
-    display: block;
-    flex-shrink: 0;
-  }
   .review-mobile-overview-toggle {
     display: inline-flex;
-  }
-  .review-grid > * {
-    flex: 1;
-  }
-  .review-grid[data-mobile-panel='queue'] .review-directory,
-  .review-grid[data-mobile-panel='directory'] .review-queue {
-    display: none;
   }
   .review-filterbar .ant-input-search {
     flex: 1;

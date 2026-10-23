@@ -31,7 +31,13 @@ export function RsvpEditor({ model }: { model: RsvpsModel }) {
           >
             取消
           </Button>
-          <Button type="primary" htmlType="submit" form={FORM_ID} loading={save.isPending}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            form={FORM_ID}
+            loading={save.isPending}
+            disabled={model.conflict}
+          >
             保存回执
           </Button>
         </div>
@@ -60,7 +66,30 @@ export function RsvpEditor({ model }: { model: RsvpsModel }) {
           showIcon
           title="回执尚未保存，填写已保留"
           description={save.error.message}
+          action={
+            model.conflict ? (
+              <Button
+                loading={model.latest.isFetching}
+                disabled={
+                  !model.latest.data || model.latest.isError || model.latest.data.guestArchived
+                }
+                onClick={model.recheckDraft}
+              >
+                保留修改并载入最新内容
+              </Button>
+            ) : undefined
+          }
         />
+      )}
+      {model.conflict && model.latest.isError && (
+        <Alert
+          type="error"
+          title="最新回执读取失败"
+          action={<Button onClick={() => model.latest.refetch()}>重试读取</Button>}
+        />
+      )}
+      {model.conflict && model.latest.data?.guestArchived && (
+        <Alert type="warning" title="宾客已归档，请先恢复宾客；当前草稿仍保留" />
       )}
       <Form
         id={FORM_ID}

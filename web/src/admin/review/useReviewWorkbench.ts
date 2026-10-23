@@ -15,6 +15,7 @@ export function useReviewWorkbench() {
   const [recordAction, setRecordAction] = useState<RecordActionTarget | null>(null);
   const [confirming, setConfirming] = useState<CheckinDTO | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  const [active, setActive] = useState(false);
   const [manualSubmissionKey, setManualSubmissionKey] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [nameComposing, setNameComposing] = useState(false);
@@ -56,8 +57,7 @@ export function useReviewWorkbench() {
     onSaved: () => {
       setDirty(false);
       setSubmitError(null);
-      setConfirming(null);
-      setManualOpen(false);
+      setActive(false);
     },
     onFailed: (error) => {
       setSubmitError(error);
@@ -78,11 +78,12 @@ export function useReviewWorkbench() {
     next();
   };
   const openTicket = (item: CheckinDTO) => {
-    if (confirming?.id === item.id && !manualOpen) return;
+    if (active && confirming?.id === item.id && !manualOpen) return;
     void switchDraft(() => {
       form.resetFields();
       setManualOpen(false);
       setConfirming(item);
+      setActive(true);
       form.setFieldsValue({
         giftReceipt: 'received',
         actualHeadcountInput: '1',
@@ -91,12 +92,13 @@ export function useReviewWorkbench() {
     });
   };
   const openManual = () => {
-    if (manualOpen) return;
+    if (active && manualOpen) return;
     void switchDraft(() => {
       manualForm.resetFields();
       setConfirming(null);
       setManualSubmissionKey(crypto.randomUUID());
       setManualOpen(true);
+      setActive(true);
     });
   };
   const goToRecords = () => {
@@ -106,24 +108,33 @@ export function useReviewWorkbench() {
   };
   const items = pending.data ?? [];
   const noLongerPending =
-    confirming != null && pending.data != null && !items.some((r) => r.id === confirming.id);
+    active &&
+    confirming != null &&
+    pending.data != null &&
+    !items.some((r) => r.id === confirming.id);
   const candidates = manualOpen ? manualCandidates : confirmCandidates;
-  const active = manualOpen || confirming != null;
-  const blockSave = isReviewSaveBlocked({
-    saving,
-    candidatesFetching: candidateLookupPending,
-    candidatesError: candidates.isError,
-    noLongerPending,
-    guestArchived: !!confirming?.guestArchived,
-    manualOpen,
-    manualReady: !!manualName && !!manualSubmissionKey,
-    pendingReady: !!confirming && !pending.isError && !pending.isPending,
-  });
+  const blockSave =
+    !active ||
+    isReviewSaveBlocked({
+      saving,
+      candidatesFetching: candidateLookupPending,
+      candidatesError: candidates.isError,
+      noLongerPending,
+      guestArchived: !!confirming?.guestArchived,
+      manualOpen,
+      manualReady: !!manualName && !!manualSubmissionKey,
+      pendingReady: !!confirming && !pending.isError && !pending.isPending,
+    });
   const closeDrawer = () => {
     void switchDraft(() => {
-      setConfirming(null);
-      setManualOpen(false);
+      setActive(false);
     });
+  };
+  // Keep the actual record and form visible until Ant Design finishes closing.
+  const afterDrawerClose = () => {
+    if (active) return;
+    setConfirming(null);
+    setManualOpen(false);
   };
   const onNavigate = (path: string) => {
     void switchDraft(() => {
@@ -144,6 +155,7 @@ export function useReviewWorkbench() {
         setConfirming(null);
         setManualSubmissionKey(crypto.randomUUID());
         setManualOpen(true);
+        setActive(true);
         manualForm.setFieldsValue({ guestName: row.name });
       });
     }
@@ -179,6 +191,7 @@ export function useReviewWorkbench() {
     active,
     blockSave,
     closeDrawer,
+    afterDrawerClose,
     onNavigate,
     onProcess,
     submit,

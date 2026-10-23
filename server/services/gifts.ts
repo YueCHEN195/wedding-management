@@ -1,13 +1,54 @@
+import { createHash } from 'node:crypto';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { z } from 'zod';
 import { db, sqlite } from '../db/client';
-import { gifts, operationLogs, type GiftRow } from '../db/schema';
+import { gifts, guests, operationLogs, type GiftRow } from '../db/schema';
 import type { SessionPayload } from '../auth/jwt';
-import type { giftPatchSchema } from '../lib/validation';
+import { InputError, type giftCreateSchema, type giftPatchSchema } from '../lib/validation';
 import { now } from '../lib/util';
 
 export class GiftEditError extends Error {
-  constructor(public code: 'CONFLICT' | 'VERSION_CONFLICT' | 'NO_CHANGES', message: string) { super(message); }
+  constructor(public code: 'CONFLICT' | 'VERSION_CONFLICT' | 'NO_CHANGES' | 'IDEMPOTENCY_CONFLICT', message: string) { super(message); }
+}
+export function createGift(input: z.infer<typeof giftCreateSchema>, actor: SessionPayload) {
+  const { submissionKey, ...values } = input;
+  const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+  const submissionKeyHash = hash(`${actor.id}:${submissionKey}`);
+  const normalized = { ...values, guestId: values.guestId ?? null };
+  const submissionPayloadHash = hash(JSON.stringify(normalized));
+  return sqlite
+    .transaction(() => {
+      const previous = db
+        .select()
+        .from(gifts)
+        .where(eq(gifts.submissionKeyHash, submissionKeyHash))
+        .get();
+      if (previous) {
+        if (previous.submissionPayloadHash !== submissionPayloadHash)
+          throw new GiftEditError(
+            'IDEMPOTENCY_CONFLICT',
+            '本次登记已保存且内容不同，请核对原礼金记录后再操作',
+          );
+        return previous;
+      }
+      if (normalized.guestId != null) {
+        const guest = db.select().from(guests).where(eq(guests.id, normalized.guestId)).get();
+        if (!guest || guest.name !== normalized.guestName)
+          throw new InputError('所选宾客不存在或与姓名不符，请重新核对宾客编号');
+      }
+      return insertGiftWithAudit(
+        {
+          ...normalized,
+          submissionKeyHash,
+          submissionPayloadHash,
+          checkinId: null,
+          recordedAt: now(),
+        },
+        actor,
+        '管理员独立登记实收礼金',
+      );
+    })
+    .immediate();
 }
 function recordGift(action: 'create' | 'edit', before: GiftRow | null, after: GiftRow, actor: SessionPayload, reason: string) {
   db.insert(operationLogs).values({ entity: 'gift', entityId: after.id, action, reason,

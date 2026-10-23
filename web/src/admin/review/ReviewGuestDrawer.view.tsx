@@ -1,7 +1,7 @@
 import { AdminDrawer } from '../components/AdminDrawer';
 import { Alert, Button, Descriptions, Form, Input, Select, Space, Typography } from 'antd';
 import { MAX_NAME_LENGTH, MAX_TEXT_LENGTH } from '@shared/constraints';
-import { SIDE_LABEL, yuan } from '@/lib/format';
+import { METHOD_LABEL, SIDE_LABEL, formatDateTime, yuan } from '@/lib/format';
 import type { ReviewDirectoryModel, ReviewDirectoryProps } from './useReviewDirectory';
 import { reviewStatusLabels as labels } from './reviewStatusLabels';
 export function ReviewGuestDrawer({
@@ -22,7 +22,12 @@ export function ReviewGuestDrawer({
             关闭
           </Button>
           {editing ? (
-            <Button type="primary" loading={update.isPending} onClick={() => form.submit()}>
+            <Button
+              type="primary"
+              loading={update.isPending}
+              disabled={model.conflict || model.rechecking || !!detail.data?.guest.archivedAt}
+              onClick={() => form.submit()}
+            >
               保存修改
             </Button>
           ) : (
@@ -52,14 +57,7 @@ export function ReviewGuestDrawer({
           action={<Button onClick={() => detail.refetch()}>重试</Button>}
         />
       )}
-      {update.isError && (
-        <Alert
-          type="error"
-          showIcon
-          title="修改未保存，输入已保留"
-          description={update.error.message}
-        />
-      )}
+      <ReviewGuestSaveFeedback model={model} />
       {editing ? (
         <Form
           form={form}
@@ -102,7 +100,7 @@ function ReviewGuestDetails({
   onProcess,
   onNavigate,
 }: ReviewDirectoryProps & { model: ReviewDirectoryModel }) {
-  const { selected, setSelected, detail } = model;
+  const { selected, setSelected, detail, giftEditor } = model;
   if (!selected) return null;
   return (
     <>
@@ -131,7 +129,11 @@ function ReviewGuestDetails({
                 {
                   key: 'gift',
                   label: '有效礼金',
-                  children: selected.giftTotal == null ? '未登记' : `¥${yuan(selected.giftTotal)}`,
+                  children: detail.data
+                    ? `¥${yuan(detail.data.giftTotal)}`
+                    : selected.giftTotal == null
+                      ? '未登记'
+                      : `¥${yuan(selected.giftTotal)}`,
                 },
                 {
                   key: 'note',
@@ -149,7 +151,6 @@ function ReviewGuestDetails({
           </Typography.Paragraph>
           <Space wrap>
             <Button onClick={() => onNavigate('/admin/checkins')}>签到记录 / 人数更正</Button>
-            <Button onClick={() => onNavigate('/admin/gifts')}>礼金登记 / 更正</Button>
           </Space>
         </>
       ) : (
@@ -164,6 +165,56 @@ function ReviewGuestDetails({
           进入核对
         </Button>
       )}
+      {admin && detail.data && (
+        <section className="review-section">
+          <h3>礼金记录</h3>
+          {detail.data.gifts.length ? (
+            detail.data.gifts.map((gift) => (
+              <div className="review-secondary-action" key={gift.id}>
+                <Typography.Paragraph>
+                  #{gift.id} · ¥{yuan(gift.amount)} · {METHOD_LABEL[gift.method]} ·{' '}
+                  {formatDateTime(gift.recordedAt)}
+                  {gift.voidedAt != null && ' · 已作废'}
+                </Typography.Paragraph>
+                <Button
+                  disabled={
+                    disabled || detail.isFetching || detail.isError || gift.voidedAt != null
+                  }
+                  onClick={() => giftEditor.openEdit(gift)}
+                >
+                  更正礼金
+                </Button>
+              </div>
+            ))
+          ) : (
+            <Typography.Text type="secondary">尚未登记礼金</Typography.Text>
+          )}
+        </section>
+      )}
     </>
+  );
+}
+
+function ReviewGuestSaveFeedback({ model }: { model: ReviewDirectoryModel }) {
+  if (!model.update.isError) return null;
+  return (
+    <Alert
+      type="error"
+      showIcon
+      title="修改未保存，输入已保留"
+      description={model.update.error.message}
+      action={
+        model.conflict ? (
+          <Button
+            loading={model.rechecking}
+            onClick={() => {
+              void model.recheckDraft();
+            }}
+          >
+            保留修改并载入最新档案
+          </Button>
+        ) : undefined
+      }
+    />
   );
 }
