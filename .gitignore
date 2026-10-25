@@ -3,6 +3,14 @@ data/
 web/dist/
 dist/
 .env
+.env.*
+!.env.example
 *.log
 .DS_Store
+releases/
+backups/
+scripts/deploy/server.local.json
+.compose.release.yml
+deployment-state.json
+__pycache__/
 test-results/

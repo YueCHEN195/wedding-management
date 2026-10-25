@@ -1,0 +1,5 @@
+{
+  "target": "ubuntu@YOUR_SERVER_IP",
+  "project": "/home/ubuntu/wedding-management",
+  "inbox": "/home/ubuntu/wedding-releases"
+}

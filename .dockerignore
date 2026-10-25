@@ -6,3 +6,10 @@ web/dist
 docs
 *.log
 .env
+.env.*
+!.env.example
+releases
+backups
+**/server.local.json
+*.tar
+**/__pycache__

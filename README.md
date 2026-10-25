@@ -49,6 +49,8 @@ pnpm test:e2e
 
 ## 工程与部署
 
+日常更新可双击根目录 `build-release.cmd`（本地构建后网页上传）或 `publish-release.cmd`（配置 SSH 后自动更新）。完整操作、备份与失败恢复见[手动发布与更新](docs/技术/手动发布与更新.md)，入口只用于已有部署。
+
 TypeScript 7、Node 24、Hono、SQLite/WAL、Drizzle、React 19、Vite 8、Ant Design 6。后端统一提供API，生产模式同时托管 `web/dist`；Docker Compose包含应用与Caddy，数据挂载到 `data/`。
 
 ```text
