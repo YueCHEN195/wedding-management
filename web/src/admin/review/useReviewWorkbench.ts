@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Form, message } from 'antd';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { createSubmissionKey } from '@/lib/submissionKey';
 import type { CheckinDTO, ReviewGuestRow } from '@shared/types';
 import type { AdminOutletContext } from '../AdminLayout';
 import type { RecordActionTarget } from '../components/RecordAction';
@@ -8,7 +9,8 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useReviewRealtime } from './useReviewRealtime';
 import { useReviewQueries } from './useReviewQueries';
 import { useReviewSubmission } from './useReviewSubmission';
-import { useRsvpAttendance } from './useRsvpAttendance';
+import { useReviewIdentity } from './useReviewIdentity';
+import { reviewInitialValues } from './checkinFormDefaults';
 import { isReviewSaveBlocked, type CheckinFormValues } from './checkinForm';
 export function useReviewWorkbench() {
   const realtimeConnected = useReviewRealtime();
@@ -40,17 +42,19 @@ export function useReviewWorkbench() {
     candidateLookupPending,
     invalidate,
   } = useReviewQueries(confirming, manualOpen, manualName, nameComposing);
-  useEffect(() => {
-    manualForm.setFieldsValue({ guestId: undefined, newGuest: undefined });
-  }, [manualName, manualForm]);
-  useRsvpAttendance(form, confirming?.guestName ?? '', confirmCandidates, confirming != null);
-  useRsvpAttendance(
+  const { identity, setManualPreferred } = useReviewIdentity({
+    form,
     manualForm,
+    confirming,
+    manualOpen,
     manualName,
-    manualCandidates,
-    manualOpen && !!manualName,
+    manualSubmissionKey,
     manualNamePending,
-  );
+    confirmCandidates,
+    manualCandidates,
+    pendingItems: pending.data ?? [],
+    pendingReady: !pending.isPending && !pending.isError,
+  });
 
   const { confirm, manual, saving } = useReviewSubmission({
     confirming,
@@ -86,19 +90,16 @@ export function useReviewWorkbench() {
       setManualOpen(false);
       setConfirming(item);
       setActive(true);
-      form.setFieldsValue({
-        giftReceipt: 'received',
-        actualHeadcountInput: '1',
-        actualChildrenInput: '0',
-      });
+      form.setFieldsValue(reviewInitialValues);
     });
   };
   const openManual = () => {
     if (active && manualOpen) return;
     void switchDraft(() => {
       manualForm.resetFields();
+      setManualPreferred(null);
       setConfirming(null);
-      setManualSubmissionKey(crypto.randomUUID());
+      setManualSubmissionKey(createSubmissionKey());
       setManualOpen(true);
       setActive(true);
     });
@@ -117,6 +118,9 @@ export function useReviewWorkbench() {
   const candidates = manualOpen ? manualCandidates : confirmCandidates;
   const blockSave =
     !active ||
+    pending.isPending ||
+    pending.isError ||
+    identity.blocked ||
     isReviewSaveBlocked({
       saving,
       candidatesFetching: candidateLookupPending,
@@ -145,21 +149,25 @@ export function useReviewWorkbench() {
   };
   const onProcess = (row: ReviewGuestRow) => {
     if (row.pendingId != null) {
-      const item = pending.data?.find((item) => item.id === row.pendingId);
-      if (item) openTicket(item);
-      else {
-        void pending.refetch();
-        message.info('待审记录已变化，正在刷新队列，请重新核对');
-      }
+      openRelatedPending(row.pendingId);
     } else {
       void switchDraft(() => {
         manualForm.resetFields();
         setConfirming(null);
-        setManualSubmissionKey(crypto.randomUUID());
+        setManualSubmissionKey(createSubmissionKey());
         setManualOpen(true);
         setActive(true);
+        setManualPreferred(row.guestId == null ? null : { id: row.guestId, name: row.name });
         manualForm.setFieldsValue({ guestName: row.name });
       });
+    }
+  };
+  const openRelatedPending = (id: number) => {
+    const item = pending.data?.find((record) => record.id === id);
+    if (item) openTicket(item);
+    else {
+      void pending.refetch();
+      message.info('待审记录已变化，正在刷新队列，请重新核对');
     }
   };
   const submit = (input: CheckinFormValues) => {
@@ -189,6 +197,8 @@ export function useReviewWorkbench() {
     items,
     noLongerPending,
     candidates,
+    identity,
+    openRelatedPending,
     candidateNamePending,
     setNameComposing,
     active,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { wedding } from '@shared/wedding';
+import { ProgressivePhoto } from '../guest/ProgressivePhoto';
 import type { PublicCheckinModel } from './usePublicCheckin';
 import '../guest/guest-tokens.css';
 import './checkin.css';
@@ -68,7 +69,7 @@ export function CheckinView({ model }: { model: PublicCheckinModel }) {
           </p>
           <div className="checkin-visual" aria-hidden="true">
             {!imageFailed ? (
-              <img
+              <ProgressivePhoto
                 src={wedding.images.checkin}
                 alt=""
                 decoding="async"

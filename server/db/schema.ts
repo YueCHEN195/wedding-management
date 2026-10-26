@@ -65,6 +65,8 @@ export const checkins = sqliteTable('checkins', {
   // 旧签到保留 NULL，不能用预计人数推算实际到场。
   actualHeadcount: integer('actual_headcount'),
   actualChildrenCount: integer('actual_children_count'),
+  // NULL means historical provenance is unknown; never infer from group or RSVP.
+  autoCreatedGuest: integer('auto_created_guest', { mode: 'boolean' }),
 });
 
 /** 同一次登记的重试结果；多个设备的提交可指向同一签到记录。 */

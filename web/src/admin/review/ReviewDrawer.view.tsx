@@ -7,6 +7,7 @@ import { AttendanceFields } from '../components/AttendanceFields';
 import { OptionalGiftFields } from './OptionalGiftFields.view';
 import { ReviewIdentityFields } from './ReviewIdentityFields.view';
 import type { CheckinFormValues } from './checkinForm';
+import { reviewInitialValues } from './checkinFormDefaults';
 import type { ReviewWorkbenchModel } from './useReviewWorkbench';
 const REVIEW_FORM_ID = 'review-checkin-form';
 type Props = Pick<
@@ -23,6 +24,8 @@ type Props = Pick<
   | 'noLongerPending'
   | 'submitError'
   | 'candidates'
+  | 'identity'
+  | 'openRelatedPending'
   | 'candidateNamePending'
   | 'setNameComposing'
   | 'goToRecords'
@@ -80,11 +83,7 @@ export function ReviewDrawer({ model }: { model: Props }) {
         form={activeForm}
         layout="vertical"
         disabled={saving}
-        initialValues={{
-          giftReceipt: 'received',
-          actualHeadcountInput: '1',
-          actualChildrenInput: '0',
-        }}
+        initialValues={reviewInitialValues}
         onValuesChange={() => setDirty(true)}
         onFinish={submit}
       >

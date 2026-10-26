@@ -8,9 +8,11 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "preview:local": "bash scripts/preview-local.sh",
     "dev:server": "tsx watch server/index.ts",
     "dev:web": "vite",
-    "build": "vite build",
+    "build": "pnpm images:optimize && vite build",
+    "images:optimize": "node --import tsx scripts/optimize-guest-images.mjs",
     "start": "cross-env NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",

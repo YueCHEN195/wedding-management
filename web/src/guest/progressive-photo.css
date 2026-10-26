@@ -1,0 +1,13 @@
+.guest-experience .guest-photo {
+  --guest-photo-preview-blur: 2px;
+  transition: filter var(--guest-duration-control) var(--guest-ease);
+}
+.guest-experience .guest-photo[data-photo-state='preview'],
+.guest-experience .guest-photo[data-photo-state='preview-only'] {
+  filter: blur(var(--guest-photo-preview-blur));
+}
+@media (prefers-reduced-motion: reduce) {
+  .guest-experience .guest-photo {
+    transition: none;
+  }
+}

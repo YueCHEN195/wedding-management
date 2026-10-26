@@ -308,24 +308,36 @@
   .guest-invite {
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
-    height: var(--invite-visible-height, 100dvh);
+    height: var(--invite-visible-height, 100vh);
     min-height: 0;
     overflow: hidden;
+  }
+  @supports (height: 100dvh) {
+    .guest-invite {
+      height: var(--invite-visible-height, 100dvh);
+    }
   }
   .guest-invite .invite-scroll {
     min-height: 0;
     min-width: 0;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
     overscroll-behavior-y: contain;
-    scrollbar-width: thin;
-    scrollbar-color: var(--guest-scrollbar-thumb) transparent;
   }
-  .guest-invite .invite-scroll::-webkit-scrollbar {
-    width: var(--guest-scrollbar-size);
-  }
-  .guest-invite .invite-scroll::-webkit-scrollbar-thumb {
-    background: var(--guest-scrollbar-thumb);
-    border-radius: var(--guest-radius-control);
+  /* Touch WebViews keep their native overlay scrollbar. Explicit scrollbar
+     sizing can reserve a light gutter in engines that mobile emulation misses. */
+  @media (hover: hover) and (pointer: fine) {
+    .guest-invite .invite-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: var(--guest-scrollbar-thumb) transparent;
+    }
+    .guest-invite .invite-scroll::-webkit-scrollbar {
+      width: var(--guest-scrollbar-size);
+    }
+    .guest-invite .invite-scroll::-webkit-scrollbar-thumb {
+      background: var(--guest-scrollbar-thumb);
+      border-radius: var(--guest-radius-control);
+    }
   }
   .guest-invite .invite-mobile-action-root {
     display: block;

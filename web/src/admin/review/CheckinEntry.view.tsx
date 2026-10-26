@@ -5,7 +5,7 @@ export function CheckinEntryView({
   onClose,
   model,
 }: Pick<CheckinEntryProps, 'open' | 'onClose'> & { model: CheckinEntryModel }) {
-  const { url, setUrl, form, saving, busy, error, validUrl, local, submit } = model;
+  const { url, form, saving, busy, error, validUrl, local, submit } = model;
   return (
     <Modal
       className="admin-dialog"
@@ -42,7 +42,7 @@ export function CheckinEntryView({
           bordered={false}
         />
       </div>
-      <Form autoComplete="off" layout="vertical">
+      {/* <Form autoComplete="off" layout="vertical">
         <Form.Item
           label="宾客签到地址"
           validateStatus={validUrl ? undefined : 'error'}
@@ -55,7 +55,7 @@ export function CheckinEntryView({
             aria-label="宾客签到地址"
           />
         </Form.Item>
-      </Form>
+      </Form> */}
       {local && (
         <Alert
           type="warning"
@@ -64,7 +64,7 @@ export function CheckinEntryView({
           description="请改填同一网络内电脑的IP地址，或已部署的网站地址，然后重新扫码。"
         />
       )}
-      <Space wrap>
+      {/* <Space wrap>
         <Button
           href={validUrl ? url : undefined}
           target="_blank"
@@ -73,7 +73,8 @@ export function CheckinEntryView({
         >
           打开宾客签到页
         </Button>
-      </Space>
+      </Space> */}
+      <br/>
       <Typography.Title level={5}>代填姓名，加入待审核</Typography.Title>
       <Typography.Paragraph type="secondary">
         宾客不便扫码时可代登记，成功后直接填写下一位。同名来宾会分别进入待审。

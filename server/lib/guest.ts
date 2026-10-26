@@ -23,7 +23,14 @@ export function findGuestCandidates(name: string): GuestCandidate[] {
   const checkedInIds = new Set(db.selectDistinct({ guestId: checkins.guestId }).from(checkins)
     .where(and(inArray(checkins.guestId, rows.map((g) => g.id)), eq(checkins.status, 'confirmed')))
     .all().map((c) => c.guestId));
-  return rows.map((g) => ({ ...g, attending: latest.get(g.id)?.attending ?? null, headcount: latest.get(g.id)?.headcount ?? null, childrenCount: latest.get(g.id)?.childrenCount ?? null, checkedIn: checkedInIds.has(g.id) }));
+  const pendingByGuest = new Map<number, number[]>();
+  for (const record of db.select({ id: checkins.id, guestId: checkins.guestId }).from(checkins)
+    .where(and(inArray(checkins.guestId, rows.map((g) => g.id)), eq(checkins.status, 'pending'))).orderBy(asc(checkins.id)).all()) {
+    const ids = pendingByGuest.get(record.guestId!) ?? [];
+    ids.push(record.id);
+    pendingByGuest.set(record.guestId!, ids);
+  }
+  return rows.map((g) => ({ ...g, pendingCheckinIds: pendingByGuest.get(g.id) ?? [], attending: latest.get(g.id)?.attending ?? null, headcount: latest.get(g.id)?.headcount ?? null, childrenCount: latest.get(g.id)?.childrenCount ?? null, checkedIn: checkedInIds.has(g.id) }));
 }
 
 /** 显式选择必须有效且同名；多名候选不能猜测，未命中才建档。 */

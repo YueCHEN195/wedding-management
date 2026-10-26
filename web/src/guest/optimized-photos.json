@@ -1,0 +1,14 @@
+{
+  "/assets/wedding/couple-portrait.webp": {
+    "src": "/assets/wedding/optimized/couple-portrait-full-4ca309a4113a.webp",
+    "preview": "/assets/wedding/optimized/couple-portrait-preview-02ac3df13ec5.webp",
+    "width": 1280,
+    "height": 1919
+  },
+  "/assets/wedding/night-sparklers.webp": {
+    "src": "/assets/wedding/optimized/night-sparklers-full-2e483bd99e1b.webp",
+    "preview": "/assets/wedding/optimized/night-sparklers-preview-3680bdf6fa87.webp",
+    "width": 1600,
+    "height": 1067
+  }
+}

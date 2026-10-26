@@ -46,6 +46,7 @@ export function rsvpToDTO(row: RsvpRow): RsvpDTO {
 
 export function checkinToDTO(row: CheckinRow, gift?: GiftRow | null): CheckinDTO {
   return {
+    autoCreatedGuest: row.autoCreatedGuest,
     id: row.id,
     guestId: row.guestId,
     guestName: row.guestName,

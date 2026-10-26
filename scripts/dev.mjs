@@ -6,10 +6,13 @@
 import { spawn, spawnSync } from 'node:child_process';
 
 const isWin = process.platform === 'win32';
+const preview = process.argv.includes('--preview')
+  ? await (await import('./local-preview.mjs')).prepareLocalPreview()
+  : null;
 
 const specs = [
   { name: 'server', color: 34, command: 'tsx', args: ['watch', 'server/index.ts'] },
-  { name: 'web', color: 35, command: 'vite', args: [] },
+  { name: 'web', color: 35, command: 'vite', args: preview?.webArgs ?? [] },
 ];
 
 const children = [];
@@ -45,6 +48,7 @@ for (const spec of specs) {
     shell: true,
     windowsHide: true,
     detached: !isWin,
+    env: preview?.env ?? process.env,
   });
 
   const tag = `\x1b[${spec.color}m[${spec.name}]\x1b[0m`;
@@ -61,9 +65,20 @@ for (const spec of specs) {
     console.log(`${tag} 已退出（code=${code} signal=${signal}），正在停止其它进程…`);
     shutdown(code ?? 1);
   });
+  child.on('error', (error) => {
+    console.error(`${tag} 启动失败：${error.message}`);
+    shutdown(1);
+  });
 
   children.push(child);
 }
 
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
+
+if (preview) {
+  void preview.showEntrances().catch((error) => {
+    console.error(error.message);
+    shutdown(1);
+  });
+}

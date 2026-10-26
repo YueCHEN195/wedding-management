@@ -1,0 +1,1 @@
+ALTER TABLE `checkins` ADD `auto_created_guest` integer;

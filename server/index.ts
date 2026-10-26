@@ -53,6 +53,14 @@ app.all('/api/*', (c) => c.json({ ok: false, error: { code: 'NOT_FOUND', message
 
 // 生产环境由 Node 托管前端构建产物（SPA）
 if (env.isProduction) {
+  // Only content-addressed photo files receive immutable caching. Never cache
+  // a missing file's SPA fallback (HTML) under an image URL for a year.
+  app.use('/assets/wedding/optimized/*', async (c, next) => {
+    await next();
+    if (c.res.ok && c.res.headers.get('content-type')?.startsWith('image/')) {
+      c.header('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  });
   app.use('/*', serveStatic({ root: './web/dist' }));
   app.get('*', serveStatic({ path: './web/dist/index.html' }));
 }

@@ -2,6 +2,7 @@ import { useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { wedding } from '@shared/wedding';
 import { weddingDisplay } from './invitationFormat';
+import { ProgressivePhoto } from '../guest/ProgressivePhoto';
 import type { useCountdown } from './useCountdown';
 import type { InvitationModel } from './useInvitation';
 import { RsvpForm } from './RsvpForm.view';
@@ -48,7 +49,7 @@ export function InviteContent({
       <h2 id="invite-greeting">{model.greeting ? `亲爱的${model.greeting}` : '亲爱的亲友'}</h2>
       <p className="invite-letter">{wedding.invitationText.replace('，', '，\n')}</p>
       {!detailImageFailed && (
-        <img
+        <ProgressivePhoto
           className="invite-detail-photo"
           src={wedding.images.detail}
           alt="两人手持烟花的夜景婚纱合照"
@@ -104,7 +105,13 @@ export function InviteContent({
             {wedding.story && <p>{wedding.story}</p>}
             <div className="invite-gallery">
               {wedding.images.gallery.map((src, index) => (
-                <img key={src} src={src} alt={`婚礼相册照片 ${index + 1}`} loading="lazy" />
+                <ProgressivePhoto
+                  key={src}
+                  src={src}
+                  alt={`婚礼相册照片 ${index + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                />
               ))}
             </div>
           </div>

@@ -50,6 +50,13 @@
       "when": 1792648905498,
       "tag": "0006_gift_submission_retry",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792982932533,
+      "tag": "0007_checkin_guest_provenance",
+      "breakpoints": true
     }
   ]
 }

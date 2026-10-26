@@ -49,7 +49,7 @@ export function useInviteViewport(
             detailRef.current.getBoundingClientRect().top <=
               scroll.getBoundingClientRect().top + READING_EDGE_TOLERANCE_PX,
           ),
-          height: visible && !zoomed ? visible.height : undefined,
+          height: !zoomed ? (visible?.height ?? window.innerHeight) : undefined,
           hideActions: keyboard || zoomed,
         };
         setViewport((current) =>

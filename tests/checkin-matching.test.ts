@@ -75,7 +75,7 @@ test('工作人员可读取候选辨认信息，但不返回私有凭证、电�
   assert.equal(result.body.data.length, 2);
   assert.equal(result.body.data.find((g: any) => g.id === id).headcount, 3);
   for (const candidate of result.body.data) {
-    assert.deepEqual(Object.keys(candidate).sort(), ['attending', 'checkedIn', 'childrenCount', 'groupName', 'headcount', 'id', 'name', 'side']);
+    assert.deepEqual(Object.keys(candidate).sort(), ['attending', 'checkedIn', 'childrenCount', 'groupName', 'headcount', 'id', 'name', 'pendingCheckinIds', 'side']);
   }
   assert.equal((await request('/api/checkins/candidates?name=test', 'GET', undefined, false)).status, 401);
 });
@@ -183,4 +183,30 @@ test('现场待审队列按提交先后排列，同一时间按编号稳定排�
   insert.run('已处理', 'confirmed', 500);
   const items = (await request('/api/checkins/pending')).body.data;
   assert.deepEqual(items.map((r: any) => r.id), [first, second, newer]);
+});
+
+test('扫码自动建档来源持久化，重试复用同一档案和待审标识', async () => {
+  const key = randomUUID();
+  const first = await request('/api/checkin/self', 'POST', { name: '自动建档来源', submissionKey: key }, false);
+  const retry = await request('/api/checkin/self', 'POST', { name: '自动建档来源', submissionKey: key }, false);
+  assert.equal(first.body.data.id, retry.body.data.id);
+  const pending = await request('/api/checkins/pending');
+  const item = pending.body.data.find((record: { id: number }) => record.id === first.body.data.id);
+  assert.equal(item.autoCreatedGuest, true);
+  const candidates = await request('/api/checkins/candidates?name='+encodeURIComponent('自动建档来源'));
+  assert.equal(candidates.body.data.length, 1);
+  assert.deepEqual(candidates.body.data[0].pendingCheckinIds, [first.body.data.id]);
+  assert.equal((await request(`/api/checkins/${item.id}/confirm`, 'PATCH', { amount: 0, guestId: item.guestId })).status, 200);
+  const count = sqlite.prepare('SELECT count(*) AS n FROM guests').get() as { n: number };
+  assert.equal(count.n, 1);
+});
+
+test('原名单无回执不会被误标自动新建，历史来源留空', async () => {
+  const id = addGuest('原有未回执');
+  const submission = await selfCheckin('原有未回执');
+  const record = sqlite.prepare('SELECT auto_created_guest AS origin FROM checkins WHERE id=?').get(submission.body.data.id) as { origin: number | null };
+  assert.equal(record.origin, 0);
+  sqlite.prepare("INSERT INTO checkins (guest_id,guest_name,source,status,submitted_at) VALUES (?,'历史来源','self','pending',1)").run(id);
+  const old = sqlite.prepare("SELECT auto_created_guest AS origin FROM checkins WHERE guest_name='历史来源'").get() as { origin: number | null };
+  assert.equal(old.origin, null);
 });

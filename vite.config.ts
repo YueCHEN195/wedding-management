@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     fs: { allow: [root] },
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': process.env.DEV_API_TARGET ?? 'http://localhost:3000',
     },
   },
   build: {

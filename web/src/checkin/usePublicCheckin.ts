@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { api, ApiError } from '@/api/client';
+import { createSubmissionKey } from '@/lib/submissionKey';
 const ATTEMPT_KEY = 'wedding.checkin.attempt';
 interface CheckinAttempt {
   name: string;
@@ -49,12 +50,13 @@ export function usePublicCheckin() {
       return;
     }
     setError(null);
-    const current = attempt?.name === n ? attempt : { name: n, submissionKey: crypto.randomUUID() };
-    setAttempt(current);
-    storeAttempt(current);
     saving.current = true;
     setState('saving');
     try {
+      const current =
+        attempt?.name === n ? attempt : { name: n, submissionKey: createSubmissionKey() };
+      setAttempt(current);
+      storeAttempt(current);
       const r = await api.publicCheckin.self(n, current.submissionKey);
       setState(
         r.status === 'rejected' || r.status === 'cancelled'

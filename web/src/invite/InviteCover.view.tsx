@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { wedding } from '@shared/wedding';
 import { weddingDisplay } from './invitationFormat';
+import { ProgressivePhoto } from '../guest/ProgressivePhoto';
 
 export function InviteCover({ onOpen }: { onOpen: () => void }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -8,7 +9,13 @@ export function InviteCover({ onOpen }: { onOpen: () => void }) {
     <section className="invite-cover" aria-label="请柬封面">
       <div className="invite-cover-visual" aria-hidden="true">
         {wedding.images.cover && !imageFailed ? (
-          <img src={wedding.images.cover} alt="" onError={() => setImageFailed(true)} />
+          <ProgressivePhoto
+            src={wedding.images.cover}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
           <span className="invite-placeholder">相聚</span>
         )}

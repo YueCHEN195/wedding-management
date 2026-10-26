@@ -104,6 +104,7 @@ export interface RsvpListDTO {
 }
 
 export interface CheckinDTO {
+  autoCreatedGuest?: boolean | null;
   guestArchived?: boolean;
   id: number;
   guestId: number | null;
@@ -123,6 +124,8 @@ export interface CheckinDTO {
 
 /** 现场辨认宾客所需的信息，不包含电话、备注或邀请凭证。 */
 export interface GuestCandidate {
+  /** Active submissions associated with this ID, including the current one. */
+  pendingCheckinIds?: number[];
   id: number;
   name: string;
   groupName: string | null;

@@ -3,14 +3,24 @@ import { GuestSelection } from './GuestSelection.view';
 import type { ReviewWorkbenchModel } from './useReviewWorkbench';
 type Props = Pick<
   ReviewWorkbenchModel,
-  'manualOpen' | 'manualName' | 'candidates' | 'candidateNamePending' | 'setNameComposing'
+  | 'manualOpen'
+  | 'manualName'
+  | 'candidates'
+  | 'candidateNamePending'
+  | 'setNameComposing'
+  | 'identity'
+  | 'openRelatedPending'
 >;
 export function ReviewIdentityFields({ model }: { model: Props }) {
-  const { manualOpen, manualName, candidates, candidateNamePending, setNameComposing } = model;
-  const needsChoice =
-    candidates.data != null &&
-    (candidates.data.length > 1 || candidates.data.some((guest) => guest.checkedIn));
-  if (!manualOpen && candidates.isSuccess && !needsChoice) return null;
+  const {
+    manualOpen,
+    manualName,
+    candidates,
+    candidateNamePending,
+    setNameComposing,
+    identity,
+    openRelatedPending,
+  } = model;
   return (
     <div className="review-section">
       {manualOpen && (
@@ -28,8 +38,13 @@ export function ReviewIdentityFields({ model }: { model: Props }) {
           />
         </Form.Item>
       )}
-      {(!manualOpen || !!manualName) && (!candidates.isSuccess || needsChoice) && (
-        <GuestSelection query={candidates} waitingForName={candidateNamePending} />
+      {(!manualOpen || !!manualName) && (
+        <GuestSelection
+          query={candidates}
+          waitingForName={candidateNamePending}
+          identity={identity}
+          onOpenPending={openRelatedPending}
+        />
       )}
     </div>
   );

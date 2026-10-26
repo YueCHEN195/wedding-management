@@ -18,7 +18,7 @@ export const wedding = {
   story: '',
   schedule: [{ time: '12:08', title: '开席' }],
   images: {
-    cover: '/assets/wedding/invite-cover.webp',
+    cover: '/assets/wedding/couple-portrait.webp',
     checkin: '/assets/wedding/couple-portrait.webp',
     detail: '/assets/wedding/night-sparklers.webp',
     gallery: ['/assets/wedding/couple-portrait.webp', '/assets/wedding/night-sparklers.webp'],

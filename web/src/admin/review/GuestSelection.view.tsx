@@ -1,16 +1,19 @@
-import { Alert, Button, Form, Select, Typography } from 'antd';
+import { Alert, Button, Form, Select, Space, Typography } from 'antd';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { GuestCandidate } from '@shared/types';
 import { ATTENDING_LABEL, SIDE_LABEL } from '@/lib/format';
+import { otherPendingIds, type GuestSelectionState } from './guestSelection';
 export function GuestSelection({
   query,
+  identity,
+  onOpenPending,
   waitingForName = false,
 }: {
   query: UseQueryResult<GuestCandidate[], Error>;
+  identity: GuestSelectionState;
+  onOpenPending: (id: number) => void;
   waitingForName?: boolean;
 }) {
-  const form = Form.useFormInstance();
-  const selection = Form.useWatch('guestId', form);
   if (waitingForName)
     return (
       <Typography.Paragraph role="status" type="secondary">
@@ -36,26 +39,38 @@ export function GuestSelection({
       />
     );
   const candidates = query.data;
-  if (candidates.length === 0)
-    return (
-      <Typography.Paragraph type="secondary">
-        未找到同名宾客，确认后将自动建立新档案。
-      </Typography.Paragraph>
-    );
-  if (selection !== 'new' && candidates.length === 1 && !candidates[0].checkedIn)
-    return (
-      <Typography.Paragraph type="secondary">
-        已匹配 #{candidates[0].id} · {candidates[0].name}，确认后登记实际到场人数。
-      </Typography.Paragraph>
-    );
-  const label = (g: GuestCandidate) =>
-    `#${g.id} · ${g.name} · ${g.checkedIn ? '已签到' : '未签到'} · ${g.side ? SIDE_LABEL[g.side] : '归属未填'} · ${g.groupName || '未分组'} · ${g.attending ? ATTENDING_LABEL[g.attending] : '未回执'}${g.attending === 'yes' ? ` ${g.headcount}人（儿童${g.childrenCount ?? 0}人）` : ''}`;
+  const pending = (guest: GuestCandidate) => otherPendingIds(guest, identity.checkinId).length > 0;
+  const rank = (guest: GuestCandidate) => (guest.checkedIn ? 2 : pending(guest) ? 1 : 0);
+  const label = (guest: GuestCandidate) =>
+    `#${guest.id} · ${guest.name} · ${guest.checkedIn ? '已签到' : pending(guest) ? '已有待审核提交' : '未签到'} · ${guest.side ? SIDE_LABEL[guest.side] : '归属未填'} · ${guest.groupName || '未分组'} · ${guest.attending ? ATTENDING_LABEL[guest.attending] : '未回执'}${guest.attending === 'yes' ? ` ${guest.headcount}人（儿童${guest.childrenCount ?? 0}人）` : ''}`;
   return (
     <>
-      {candidates.length > 1 && (
-        <Alert type="warning" showIcon title="有同名记录，请核对本人；已签到记录不可重复确认" />
+      {identity.pendingIds.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          title="已有同名待审核记录，请先核对是否为同一位来宾"
+          description={
+            <Space wrap>
+              {identity.pendingIds.map((id) => (
+                <Button key={id} type="link" onClick={() => onOpenPending(id)}>
+                  查看待审 #{id}
+                </Button>
+              ))}
+            </Space>
+          }
+        />
+      )}
+      {identity.blocked && (
+        <Alert
+          type="warning"
+          showIcon
+          title="所选宾客的现场状态已变化，请重新核对"
+          description="当前选择与人数已保留；请选择可核对的宾客，或明确新增另一位同名宾客。"
+        />
       )}
       <Form.Item
+        hidden={!identity.showSelection}
         name="guestId"
         label="对应宾客"
         rules={[{ required: true, message: '请选择对应宾客，或新增另一位同名宾客' }]}
@@ -63,19 +78,27 @@ export function GuestSelection({
         <Select
           placeholder="核对已有宾客，或新增另一位同名宾客"
           options={[
-            ...candidates.map((g) => ({
-              value: g.id as number | 'new',
-              label: label(g),
-              disabled: g.checkedIn,
-            })),
+            ...[...candidates]
+              .sort((a, b) => rank(a) - rank(b))
+              .map((guest) => ({
+                value: guest.id as number | 'new',
+                label: label(guest),
+                disabled: guest.checkedIn || pending(guest),
+              })),
             { value: 'new' as const, label: '都不是，新增另一位同名宾客' },
           ]}
           optionRender={(option) => <span style={{ whiteSpace: 'normal' }}>{option.label}</span>}
         />
       </Form.Item>
-      {selection === 'new' && (
+      {identity.ownTemporary && (
         <Typography.Paragraph type="secondary">
-          本次新增独立档案，归入“临时到场”。
+          本次扫码已建立临时档案 #{identity.selection}，确认时复用该档案。
+        </Typography.Paragraph>
+      )}
+      {identity.selection === 'new' && (
+        <Typography.Paragraph type="secondary">
+          {identity.allCheckedIn && '已有同名宾客均已签到。'}
+          <span>本次新增独立档案，归入“临时到场”。</span>
         </Typography.Paragraph>
       )}
     </>

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Form, message } from 'antd';
 import { api } from '@/api/client';
+import { createSubmissionKey } from '@/lib/submissionKey';
 import { adminFeedback } from '../theme';
 export interface CheckinEntryProps {
   open: boolean;
@@ -27,12 +28,12 @@ export function useCheckinEntry(onCreated: () => void) {
   const submit = async ({ name }: { name: string }) => {
     if (saving.current) return;
     const normalized = name.trim();
-    if (attempt.current?.name !== normalized)
-      attempt.current = { name: normalized, key: crypto.randomUUID() };
     saving.current = true;
     setBusy(true);
     setError(null);
     try {
+      if (attempt.current?.name !== normalized)
+        attempt.current = { name: normalized, key: createSubmissionKey() };
       const response = await api.publicCheckin.self(normalized, attempt.current!.key);
       const result =
         response.status === 'pending'

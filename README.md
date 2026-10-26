@@ -34,6 +34,14 @@ Windows 可用 `copy .env.example .env`。已有 `.env` 时不要覆盖；`db:se
 
 前端 `http://localhost:5173`，后端 `http://localhost:3000`。婚礼信息与素材路径由 `shared/wedding.ts` 管理，后台没有婚礼配置或照片上传界面。
 
+手机/微信本地预览（macOS / Linux，已安装 nvm 和 Node 24）：
+
+```sh
+pnpm preview:local
+```
+
+自动执行 `nvm use 24`，启动前后端并输出请柬、签到二维码及后台地址。手机与电脑连接同一 Wi-Fi 即可扫码；无需修改 `.env`，端口占用时自动选择空闲端口，按 Ctrl+C 一起停止。使用当前开发数据库，不自动清空或插入示例数据。
+
 ## 检查与测试
 
 ```sh

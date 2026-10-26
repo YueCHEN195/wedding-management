@@ -6,6 +6,7 @@ import type { AdminOutletContext } from '../AdminLayout';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { api, ApiError } from '@/api/client';
+import { createSubmissionKey } from '@/lib/submissionKey';
 import type { GiftDTO, GiftMethod } from '@shared/types';
 import { parseGiftYuan } from '@shared/numericInput';
 export interface GiftFormValues {
@@ -149,7 +150,7 @@ export function useGiftEditor() {
     });
   };
   const openCreate = () => {
-    setSubmissionKey(crypto.randomUUID());
+    setSubmissionKey(createSubmissionKey());
     setNameComposing(false);
     setDirty(false);
     save.reset();

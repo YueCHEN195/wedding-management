@@ -84,7 +84,7 @@ export function submitSelfCheckin(input: z.infer<typeof selfCheckinSchema>) {
     const existing = matched.id == null ? undefined : currentCheckin(matched.id);
     // 新标识可能是另一位同名临时宾客；姓名不能证明是同一个人。
     const row = db.insert(checkins).values({
-      guestId: existing ? null : matched.id, guestName: matched.name, source: 'self', status: 'pending', submittedAt: now(),
+      guestId: existing ? null : matched.id, guestName: matched.name, source: 'self', status: 'pending', submittedAt: now(), autoCreatedGuest: candidates.length === 0,
     }).returning().get();
     remember(input.submissionKey, payloadHash, row.id);
     return { id: row.id, status: row.status, duplicate: false };
