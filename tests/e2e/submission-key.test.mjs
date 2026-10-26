@@ -70,7 +70,10 @@ scenario('UUID-02', '缺少randomUUID时手工补录、代登记与新增礼金�
     () => globalThis.document.querySelector('#pending-entry_name')?.value === '',
   );
   assert.equal(row("SELECT count(*) AS n FROM checkins WHERE status='pending'").n, 1);
-  await page.getByRole('button', { name: /关\s*闭/ }).click();
+  await page
+    .getByRole('button', { name: /关\s*闭/ })
+    .last()
+    .click();
   await page.goto('/admin/gifts');
   await page.getByRole('button', { name: '新增礼金', exact: true }).click();
   await page.locator('#guestName').fill('兼容礼金');

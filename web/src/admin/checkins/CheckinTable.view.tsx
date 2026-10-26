@@ -91,7 +91,16 @@ function checkinColumns(model: CheckinsModel): ColumnsType<CheckinDTO> {
       width: 110,
       align: 'right',
       render: (_, r) => (
-        <span className={r.giftVoided ? 'checkin-gift-voided' : undefined}>
+        <span
+          title={
+            (r.giftCount ?? 0) > 1
+              ? r.giftVoided
+                ? '全部已作废，展示原登记合计'
+                : '有效礼金合计，作废金额不计入'
+              : undefined
+          }
+          className={r.giftVoided ? 'checkin-gift-voided' : undefined}
+        >
           {r.giftAmount == null
             ? r.status === 'confirmed'
               ? '未登记'
@@ -107,7 +116,11 @@ function checkinColumns(model: CheckinsModel): ColumnsType<CheckinDTO> {
         r.giftVoided ? (
           <StatusTag tone="inactive">已作废</StatusTag>
         ) : r.giftAmount != null ? (
-          '有效'
+          (r.giftCount ?? 0) > 1 ? (
+            `${r.giftActiveCount}笔有效`
+          ) : (
+            '有效'
+          )
         ) : (
           '未登记'
         ),
@@ -116,7 +129,8 @@ function checkinColumns(model: CheckinsModel): ColumnsType<CheckinDTO> {
       title: '方式',
       dataIndex: 'giftMethod',
       width: 90,
-      render: (v: GiftMethod | null) => (v ? METHOD_LABEL[v] : '—'),
+      render: (v: GiftMethod | null, row) =>
+        v ? METHOD_LABEL[v] : (row.giftCount ?? 0) > 1 ? '多种方式' : '—',
     },
     {
       title: '来源',
@@ -144,15 +158,14 @@ function checkinColumns(model: CheckinsModel): ColumnsType<CheckinDTO> {
 }
 function CheckinActions({
   row: r,
-  model: { me, openEdit, setAction, setHistoryId },
+  model: { openEdit, setAction, setHistoryId },
 }: {
   row: CheckinDTO;
   model: CheckinsModel;
 }) {
-  const admin = me.data?.role === 'admin';
   return (
     <Space size="small">
-      {r.status === 'confirmed' && admin && (
+      {r.status === 'confirmed' && (
         <Button type="link" onClick={() => openEdit(r)}>
           {r.actualHeadcount == null ? '补记人数' : '更正人数'}
         </Button>
@@ -172,7 +185,7 @@ function CheckinActions({
                   },
                 ]
               : []),
-            ...(r.status === 'confirmed' && admin
+            ...(r.status === 'confirmed'
               ? [
                   {
                     key: 'cancel',
@@ -182,7 +195,7 @@ function CheckinActions({
                   },
                 ]
               : []),
-            ...(r.status === 'rejected' || (r.status === 'cancelled' && admin)
+            ...(r.status === 'rejected' || r.status === 'cancelled'
               ? [
                   {
                     key: 'restore',

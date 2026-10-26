@@ -116,6 +116,8 @@ export interface CheckinDTO {
   confirmedAt: number | null;
   actualHeadcount: number | null;
   actualChildrenCount: number | null;
+  giftCount?: number;
+  giftActiveCount?: number;
   giftAmount: number | null;
   giftMethod: GiftMethod | null;
   giftVoided?: boolean;
@@ -240,8 +242,18 @@ export interface StaffGuestDTO {
   checkedIn: boolean;
 }
 export interface StaffGuestDetailDTO {
+  gifts: GiftDTO[];
   guest: StaffGuestDTO;
   checkins: Pick<CheckinDTO, 'id' | 'status' | 'submittedAt' | 'confirmedAt' | 'actualHeadcount' | 'actualChildrenCount'>[];
+}
+
+export interface CheckinReassignmentPreview {
+  token: string;
+  from: { id: number | null; name: string };
+  to: { id: number; name: string };
+  gifts: Pick<GiftDTO, 'id' | 'amount' | 'voidedAt'>[];
+  actualHeadcount: number | null;
+  actualChildrenCount: number | null;
 }
 
 /** Read-only onsite directory; financial/private fields are admin-only. */

@@ -7,7 +7,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { api, ApiError } from '@/api/client';
 import { createSubmissionKey } from '@/lib/submissionKey';
-import type { GiftDTO, GiftMethod } from '@shared/types';
+import type { CheckinDTO, GiftDTO, GiftMethod } from '@shared/types';
 import { parseGiftYuan } from '@shared/numericInput';
 export interface GiftFormValues {
   guestName: string;
@@ -24,6 +24,9 @@ export function useGiftEditor() {
   const [nameComposing, setNameComposing] = useState(false);
   const [editing, setEditing] = useState<GiftDTO | null>(null);
   const [creating, setCreating] = useState(false);
+  const [checkin, setCheckin] = useState<Pick<CheckinDTO, 'id' | 'guestId' | 'guestName'> | null>(
+    null,
+  );
   const [submissionKey, setSubmissionKey] = useState('');
   const [form] = Form.useForm<GiftFormValues>();
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -75,14 +78,7 @@ export function useGiftEditor() {
   }, [name, form]);
 
   const save = useMutation({
-    mutationFn: (v: {
-      guestName: string;
-      amountYuan: string;
-      method: GiftMethod;
-      note?: string;
-      reason?: string;
-      guestId?: number | 'none';
-    }) => {
+    mutationFn: (v: GiftFormValues) => {
       const amount = parseGiftYuan(v.amountYuan);
       if (amount == null)
         throw new ApiError('VALIDATION', '金额须为0.01–100000元，最多两位小数', 400);
@@ -93,7 +89,14 @@ export function useGiftEditor() {
         method: v.method,
         note: v.note,
       };
-      if (!editing) return api.gifts.create({ ...payload, submissionKey });
+      if (!editing)
+        return checkin
+          ? api.checkins.addGift(checkin.id, {
+              ...payload,
+              guestId: checkin.guestId ?? undefined,
+              submissionKey,
+            })
+          : api.gifts.create({ ...payload, submissionKey });
       const patch = {
         ...(payload.amount !== editing.amount ? { amount: payload.amount } : {}),
         ...(payload.method !== editing.method ? { method: payload.method } : {}),
@@ -119,6 +122,7 @@ export function useGiftEditor() {
         'gifts',
         'stats',
         'guest-detail',
+        'staff-guest-detail',
         'checkins',
         'record-history',
         'action-preview',
@@ -135,6 +139,7 @@ export function useGiftEditor() {
   });
 
   const openEdit = (gift: GiftDTO) => {
+    setCheckin(null);
     setNameComposing(false);
     setDirty(false);
     save.reset();
@@ -149,7 +154,8 @@ export function useGiftEditor() {
       note: gift.note ?? undefined,
     });
   };
-  const openCreate = () => {
+  const startCreate = (record: typeof checkin) => {
+    setCheckin(record);
     setSubmissionKey(createSubmissionKey());
     setNameComposing(false);
     setDirty(false);
@@ -157,8 +163,12 @@ export function useGiftEditor() {
     clearSaveState();
     setEditing(null);
     form.resetFields();
+    if (record)
+      form.setFieldsValue({ guestName: record.guestName, guestId: record.guestId ?? undefined });
     setCreating(true);
   };
+  const openCreate = () => startCreate(null);
+  const openForCheckin = (record: NonNullable<typeof checkin>) => startCreate(record);
   const canLeave = useUnsavedChanges({
     dirty: creating && dirty,
     busy: save.isPending,
@@ -176,11 +186,13 @@ export function useGiftEditor() {
     if (
       !save.isPending &&
       !conflict &&
-      (editing || (!!name && !candidateLookupPending && candidates.isSuccess))
+      (editing || checkin || (!!name && !candidateLookupPending && candidates.isSuccess))
     )
       save.mutate(v);
   };
   return {
+    checkin,
+    openForCheckin,
     editing,
     creating,
     dirty,

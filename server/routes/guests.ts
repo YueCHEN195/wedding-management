@@ -148,6 +148,8 @@ guestRoutes.get('/:id/detail', (c) => {
   if (c.get('user').role === 'staff') {
     return c.json({ ok: true, data: {
       guest: staffGuestToDTO(guest, rsvpRow, checkinRows.some((r) => r.status === 'confirmed')),
+      gifts: db.select().from(gifts).where(eq(gifts.guestId, id)).all()
+        .filter((gift) => checkinRows.some((record) => record.id === gift.checkinId)).map(giftToDTO),
       checkins: checkinRows.map((r) => ({ id: r.id, status: r.status, submittedAt: r.submittedAt,
         confirmedAt: r.confirmedAt, actualHeadcount: r.actualHeadcount, actualChildrenCount: r.actualChildrenCount })),
     } });

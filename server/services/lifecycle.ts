@@ -31,7 +31,7 @@ function load(entity: LifecycleEntity, id: number) {
 
 function validate(state: ReturnType<typeof load>, entity: LifecycleEntity, action: LifecycleAction, actor: SessionPayload) {
   const { guest, checkin, gift } = state;
-  if (actor.role !== 'admin' && (entity !== 'checkin' || action === 'cancel' || checkin?.status === 'cancelled')) {
+  if (actor.role !== 'admin' && (entity === 'guest' || (entity === 'gift' && !state.giftCheckin))) {
     throw new LifecycleError('FORBIDDEN', '此操作仅限管理员', 403);
   }
   const invalid = () => { throw new LifecycleError('CONFLICT', '记录状态已变化，当前不能执行此操作，请重新核对'); };
@@ -56,8 +56,18 @@ function validate(state: ReturnType<typeof load>, entity: LifecycleEntity, actio
   }
 }
 
+function attendanceLabel(value: { actualHeadcount: number | null; actualChildrenCount: number | null }) {
+  if (value.actualHeadcount == null) return '人数待补记';
+  const children = value.actualChildrenCount == null ? '儿童人数未记录' : `其中儿童${value.actualChildrenCount}人`;
+  return `${value.actualHeadcount}人（${children}）`;
+}
+
 function historyToDTO(log: typeof operationLogs.$inferSelect): OperationLogDTO {
   const { id, action, reason, actorName, createdAt } = log;
+  if (action === 'reassign') {
+    const before = JSON.parse(log.before); const after = JSON.parse(log.after);
+    return { id, action, reason, actorName, createdAt, detail: `${before.guestName} #${before.guestId ?? '未关联'} → ${after.guestName} #${after.guestId}` };
+  }
   if (log.entity === 'gift' && (action === 'create' || action === 'edit')) {
     const before = JSON.parse(log.before);
     const after = JSON.parse(log.after);
@@ -68,20 +78,19 @@ function historyToDTO(log: typeof operationLogs.$inferSelect): OperationLogDTO {
   if (action !== 'attendance') return { id, action, reason, actorName, createdAt };
   const before = JSON.parse(log.before);
   const after = JSON.parse(log.after);
-  const label = (v: { actualHeadcount: number | null; actualChildrenCount: number | null }) => v.actualHeadcount == null
-    ? '人数待补记' : `${v.actualHeadcount}人（其中儿童${v.actualChildrenCount ?? 0}人）`;
-  return { id, action, reason, actorName, createdAt, detail: `${label(before)} → ${label(after)}` };
+  return { id, action, reason, actorName, createdAt, detail: `${attendanceLabel(before)} → ${attendanceLabel(after)}` };
 }
 
 function preview(state: ReturnType<typeof load>, entity: LifecycleEntity, id: number, action: LifecycleAction): LifecyclePreview {
+  const attendance = state.checkin ? `、${attendanceLabel(state.checkin)}` : '';
   const effects = {
     guest: action === 'archive' ? '从当前名单与预计出席统计中隐藏，专属请柬停止接受回执。历史回执、签到、礼金及关联完整保留；已到场统计和礼金总额不变，可恢复。'
       : '恢复当前名单与预计出席统计，专属请柬重新可用。历史签到和礼金不重建、不重复计入。',
-    gift: action === 'void' ? '此笔礼金退出有效金额和笔数统计；原金额、宾客及签到关联保留，不影响签到，可由管理员恢复。'
+    gift: action === 'void' ? '此笔礼金退出有效金额和笔数统计；原金额、宾客及签到关联保留，不影响签到，可恢复；恢复前需核对是否已补记替代礼金。'
       : '恢复此笔原礼金，原金额重新计入有效金额和笔数；不创建新账目，不影响签到。',
     checkin: action === 'reject' ? '仅将本次待审标记为已驳回，保留原提交与操作记录，不删除或作废任何礼金。'
-      : action === 'cancel' ? `撤销本次到场确认，当前到场统计减少1组${state.checkin?.actualHeadcount == null ? '（该组人数待补记）' : `、${state.checkin.actualHeadcount}人（其中儿童${state.checkin.actualChildrenCount ?? 0}人）`}。已有礼金继续有效，若礼金也录错请另行作废。`
-        : state.checkin?.status === 'cancelled' ? `恢复原到场确认，当前到场统计增加1组${state.checkin?.actualHeadcount == null ? '（该组人数待补记）' : `、${state.checkin.actualHeadcount}人（其中儿童${state.checkin.actualChildrenCount ?? 0}人）`}。原礼金不重建、不改变有效状态。`
+      : action === 'cancel' ? `撤销本次到场确认，当前到场统计减少1组${attendance}。已有礼金的有效/作废状态不变，若礼金也录错请另行作废。`
+        : state.checkin?.status === 'cancelled' ? `恢复原到场确认，当前到场统计增加1组${attendance}。原礼金不重建、不改变有效状态。`
           : '恢复原提交到待审核队列，仍需工作人员核对；不会直接增加到场统计或礼金。',
   };
   return {
@@ -123,6 +132,7 @@ export function applyLifecycle(entity: LifecycleEntity, id: number, action: Life
 }
 
 export function lifecycleHistory(entity: LifecycleEntity, id: number, actor: SessionPayload) {
-  if (actor.role !== 'admin' && entity !== 'checkin') throw new LifecycleError('FORBIDDEN', '此操作仅限管理员', 403);
-  return load(entity, id).history.map(historyToDTO);
+  const state = load(entity, id);
+  if (actor.role !== 'admin' && (entity === 'guest' || (entity === 'gift' && !state.giftCheckin))) throw new LifecycleError('FORBIDDEN', '此操作仅限管理员', 403);
+  return state.history.map(historyToDTO);
 }

@@ -44,7 +44,12 @@ export function rsvpToDTO(row: RsvpRow): RsvpDTO {
   };
 }
 
-export function checkinToDTO(row: CheckinRow, gift?: GiftRow | null): CheckinDTO {
+export function checkinToDTO(row: CheckinRow, gift?: GiftRow | GiftRow[] | null): CheckinDTO {
+  const rows = Array.isArray(gift) ? gift : gift ? [gift] : [];
+  const active = rows.filter((row) => row.voidedAt == null);
+  // With all gifts voided, retain the original amount for the struck-through historical display.
+  const visible = active.length ? active : rows;
+  const methods = new Set(visible.map((row) => row.method));
   return {
     autoCreatedGuest: row.autoCreatedGuest,
     id: row.id,
@@ -57,9 +62,11 @@ export function checkinToDTO(row: CheckinRow, gift?: GiftRow | null): CheckinDTO
     confirmedAt: row.confirmedAt,
     actualHeadcount: row.actualHeadcount,
     actualChildrenCount: row.actualChildrenCount,
-    giftAmount: gift ? gift.amount : null,
-    giftMethod: gift ? gift.method : null,
-    giftVoided: gift?.voidedAt != null,
+    giftCount: rows.length,
+    giftActiveCount: active.length,
+    giftAmount: visible.length ? visible.reduce((total, row) => total + row.amount, 0) : null,
+    giftMethod: methods.size === 1 ? visible[0].method : null,
+    giftVoided: rows.length > 0 && active.length === 0,
     attending: null,
   };
 }

@@ -3,6 +3,7 @@ import type {
   ReviewGuestRow,
   ReviewGuestStatus,
   CheckinDTO,
+  CheckinReassignmentPreview,
   LifecycleEntity,
   LifecycleAction,
   LifecyclePreview,
@@ -143,6 +144,9 @@ export const api = {
     history: (entity: LifecycleEntity, id: number) => apiFetch<OperationLogDTO[]>(`/api/lifecycle/${entity}/${id}/history`),
   },
   checkins: {
+    reassignmentPreview: (id: number, guestId: number) => apiFetch<CheckinReassignmentPreview>(`/api/checkins/${id}/reassignment${qs({ guestId })}`),
+    reassign: (id: number, data: { guestId: number; reason: string; token: string }) => apiFetch<boolean>(`/api/checkins/${id}/reassignment`, { method: 'PATCH', body: JSON.stringify(data) }),
+    addGift: (id: number, data: { guestName: string; guestId?: number; amount: number; method: GiftMethod; note?: string; submissionKey: string }) => apiFetch<GiftDTO>(`/api/checkins/${id}/gifts`, { method: 'POST', body: JSON.stringify(data) }),
     list: (p: { status?: CheckinStatus; keyword?: string; page?: number; pageSize?: number }) =>
       apiFetch<Paginated<CheckinDTO>>(`/api/checkins${qs(p)}`),
     pending: () => apiFetch<PendingCheckinDTO[]>('/api/checkins/pending'),

@@ -6,13 +6,13 @@ import { requireAdmin, requireAuth, type AppEnv } from '../auth/middleware';
 import { giftToDTO } from '../lib/dto';
 import { parsePage, str } from '../lib/util';
 import { enumQuery, giftCreateSchema, giftPatchSchema, GIFT_INPUT_MESSAGE, inputErrorHandler, parseId, parseInput } from '../lib/validation';
-import { createGift, editGift, GiftEditError } from '../services/gifts';
+import { assertGiftAccess, createGift, editGift, GiftEditError } from '../services/gifts';
 import type { GiftMethod } from '../../shared/types';
 
 export const giftRoutes = new Hono<AppEnv>();
 giftRoutes.use('*', requireAuth);
 giftRoutes.onError((err, c) => {
-  if (err instanceof GiftEditError) return c.json({ ok: false, error: { code: err.code, message: err.message } }, 409);
+  if (err instanceof GiftEditError) return c.json({ ok: false, error: { code: err.code, message: err.message } }, err.status);
   return inputErrorHandler(err, c);
 });
 
@@ -65,14 +65,15 @@ giftRoutes.post('/', requireAdmin, async (c) => {
   return c.json({ ok: true, data: giftToDTO(row) });
 });
 
-giftRoutes.get('/:id', requireAdmin, (c) => {
+giftRoutes.get('/:id', (c) => {
   const row = db.select().from(gifts).where(eq(gifts.id, parseId(c.req.param('id')))).get();
+  assertGiftAccess(row, c.get('user'));
   c.header('Cache-Control', 'no-store');
   if (!row) return c.json({ ok: false, error: { code: 'NOT_FOUND', message: '礼金记录不存在' } }, 404);
   return c.json({ ok: true, data: giftToDTO(row) });
 });
 
-giftRoutes.patch('/:id', requireAdmin, async (c) => {
+giftRoutes.patch('/:id', async (c) => {
   const id = parseId(c.req.param('id'));
   const patch = parseInput(giftPatchSchema, await c.req.json().catch(() => null), GIFT_INPUT_MESSAGE + '；修改需填写原因并核对原版本；不能改名、改绑宾客或修改作废状态');
   return c.json({ ok: true, data: giftToDTO(editGift(id, patch, c.get('user'))) });

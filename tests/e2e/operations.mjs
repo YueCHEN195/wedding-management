@@ -83,7 +83,8 @@ scenario('INLINE-01', '现场审核原页更正人数、礼金与撤销确认', 
   await page.locator('.gift-drawer.ant-drawer-open').waitFor({ state: 'hidden' });
   assert.equal(row('SELECT amount FROM gifts').amount, 90000);
   assert.ok(page.url().endsWith('/admin/review'));
-  await page.getByRole('button', { name: '撤销签到确认', exact: true }).click();
+  await page.getByRole('button', { name: '处理错误登记', exact: true }).click();
+  await page.getByRole('menuitem', { name: '撤销签到确认', exact: true }).click();
   const modal = page.getByRole('dialog', { name: '撤销确认', exact: true });
   await modal.getByRole('checkbox', { name: '误确认签到', exact: true }).click();
   await modal.getByRole('button', { name: '撤销确认', exact: true }).click();

@@ -97,10 +97,10 @@ test('作废退出有效汇总但保留原金额和签到关联，恢复只恢�
   assert.equal((sqlite.prepare('SELECT count(*) AS n FROM gifts').get() as any).n, 1);
 });
 
-test('工作人员不能撤销确认或操作礼金/宾客，旧删除接口无法绕过', async () => {
+test('工作人员不能归档宾客，旧删除接口无法绕过', async () => {
   const { guest, checkin, gift } = fixture();
   assert.equal((await app.request(`/api/lifecycle/guest/${guest}/preview?action=archive`)).status, 401);
-  for (const [entity, id, action] of [['guest', guest, 'archive'], ['gift', gift, 'void'], ['checkin', checkin, 'cancel']] as const) {
+  for (const [entity, id, action] of [['guest', guest, 'archive']] as const) {
     const p = await preview(entity, id, action);
     assert.equal((await preview(entity, id, action, 'staff')).status, 403);
     assert.equal((await request(`/api/lifecycle/${entity}/${id}`, 'POST', { action, reason: '越权', token: p.body.data.token }, 'staff')).status, 403);

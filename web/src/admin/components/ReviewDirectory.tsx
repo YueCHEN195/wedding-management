@@ -2,6 +2,7 @@ import { useReviewDirectory, type ReviewDirectoryProps } from '../review/useRevi
 import { ReviewDirectoryView } from '../review/ReviewDirectory.view';
 import { AttendanceEditor } from '../checkins/AttendanceEditor.view';
 import { RecordAction, RecordHistory } from './RecordAction';
+import { CheckinReassignment } from '../review/CheckinReassignment.view';
 import { GiftEditor } from '../gifts/GiftEditor.view';
 export function ReviewDirectory(props: ReviewDirectoryProps) {
   const model = useReviewDirectory(props.admin);
@@ -14,20 +15,22 @@ export function ReviewDirectory(props: ReviewDirectoryProps) {
           onClose={() => model.setAction(null)}
         />
       )}
-      {model.historyId != null && (
+      {model.historyTarget != null && (
         <RecordHistory
-          entity="checkin"
-          id={model.historyId}
-          onClose={() => model.setHistoryId(null)}
+          entity={model.historyTarget.entity}
+          id={model.historyTarget.id}
+          onClose={() => model.setHistoryTarget(null)}
         />
       )}
       <ReviewDirectoryView {...props} model={model} />
-      {props.admin && (
-        <>
-          <GiftEditor model={model.giftEditor} />
-          <AttendanceEditor model={{ ...model.attendanceEditor, list: model.detail }} />
-        </>
-      )}
+      <CheckinReassignment model={model.reassignment} />
+      <GiftEditor model={model.giftEditor} />
+      <AttendanceEditor
+        model={{
+          ...model.attendanceEditor,
+          list: props.admin ? model.detail : model.staffDetail,
+        }}
+      />
     </>
   );
 }

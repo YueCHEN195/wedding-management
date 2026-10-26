@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import type { AdminOutletContext } from '../AdminLayout';
+import { useCheckinReassignment } from './useCheckinReassignment';
 import { useAttendanceEditor } from '../checkins/useAttendanceEditor';
 import type { RecordActionTarget } from '../records/types';
 import { useGiftEditor } from '../gifts/useGiftEditor';
@@ -23,7 +24,11 @@ export function useReviewDirectory(admin: boolean) {
   const qc = useQueryClient();
   const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
   const [action, setAction] = useState<RecordActionTarget | null>(null);
-  const [historyId, setHistoryId] = useState<number | null>(null);
+  const [historyTarget, setHistoryTarget] = useState<{
+    entity: 'checkin' | 'gift';
+    id: number;
+  } | null>(null);
+  const reassignment = useCheckinReassignment();
   const giftEditor = useGiftEditor();
   const attendanceEditor = useAttendanceEditor();
   const [keyword, setKeyword] = useState('');
@@ -108,6 +113,7 @@ export function useReviewDirectory(admin: boolean) {
     conflict,
     rechecking,
     recheckDraft,
+    reassignment,
     giftEditor,
     attendanceEditor,
     keyword,
@@ -130,8 +136,8 @@ export function useReviewDirectory(admin: boolean) {
     selectedProjection,
     action,
     setAction,
-    historyId,
-    setHistoryId,
+    historyTarget,
+    setHistoryTarget,
     editing,
     setDirty,
     form,

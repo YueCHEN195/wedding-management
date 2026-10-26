@@ -1,9 +1,9 @@
-import type { CheckinDTO } from '@shared/types';
-import { Alert, Button, Descriptions, Space, Typography } from 'antd';
+import { Alert, Button, Descriptions, Typography } from 'antd';
 import { GuestDetailSummary } from '../components/GuestDetailSummary';
 import { StatusTag } from '../components/StatusTag';
-import { CHECKIN_STATUS_LABEL, METHOD_LABEL, SIDE_LABEL, formatDateTime, yuan } from '@/lib/format';
+import { SIDE_LABEL } from '@/lib/format';
 import type { ReviewDirectoryModel, ReviewDirectoryProps } from './useReviewDirectory';
+import { ReviewCheckinRecord, ReviewGiftRecords } from './ReviewRecordActions.view';
 import { reviewStatusLabels as labels } from './reviewStatusLabels';
 
 export function ReviewGuestDetails({
@@ -54,7 +54,7 @@ export function ReviewGuestDetails({
       {selected.guestId != null && (
         <ReviewCheckinRecords model={model} admin={admin} disabled={disabled} />
       )}
-      {admin && detail.data && <ReviewGiftRecords model={model} disabled={disabled} />}
+      <ReviewGiftRecords model={model} admin={admin} disabled={disabled} />
       {admin && detail.data && (
         <section className="guest-detail-panel">
           <h3>档案补充</h3>
@@ -168,121 +168,6 @@ function ReviewCheckinRecords({
           disabled={disabled}
         />
       ))}
-    </section>
-  );
-}
-function ReviewCheckinRecord({
-  record,
-  model,
-  admin,
-  disabled,
-}: {
-  record: Pick<
-    CheckinDTO,
-    'id' | 'status' | 'actualHeadcount' | 'actualChildrenCount' | 'confirmedAt' | 'submittedAt'
-  >;
-  model: ReviewDirectoryModel;
-  admin: boolean;
-  disabled: boolean;
-}) {
-  const { detail } = model;
-  return (
-    <div className="guest-detail-record">
-      <div className="guest-detail-record-head">
-        <strong>签到 #{record.id}</strong>
-        <StatusTag tone={record.status === 'confirmed' ? 'success' : 'neutral'}>
-          {CHECKIN_STATUS_LABEL[record.status]}
-        </StatusTag>
-      </div>
-      <span>
-        {record.actualHeadcount == null
-          ? '实际人数未记录'
-          : `实到 ${record.actualHeadcount} 人（儿童 ${record.actualChildrenCount ?? '未记录'} 人）`}
-      </span>
-      <small>
-        {record.confirmedAt ? '确认于' : '提交于'}{' '}
-        {formatDateTime(record.confirmedAt ?? record.submittedAt)}
-      </small>
-      {admin && (
-        <Space wrap>
-          {record.status === 'confirmed' && (
-            <>
-              <Button
-                disabled={disabled || detail.isFetching || detail.isError}
-                onClick={() => {
-                  const row = detail.data?.checkins.find((row) => row.id === record.id);
-                  if (row) model.attendanceEditor.openEdit(row);
-                }}
-              >
-                {record.actualHeadcount == null ? '补记人数' : '更正人数'}
-              </Button>
-              <Button
-                disabled={disabled}
-                onClick={() =>
-                  model.setAction({ entity: 'checkin', id: record.id, action: 'cancel' })
-                }
-              >
-                撤销签到确认
-              </Button>
-            </>
-          )}
-          <Button type="text" onClick={() => model.setHistoryId(record.id)}>
-            操作记录
-          </Button>
-        </Space>
-      )}
-    </div>
-  );
-}
-function ReviewGiftRecords({
-  model,
-  disabled,
-}: {
-  model: ReviewDirectoryModel;
-  disabled: boolean;
-}) {
-  const { detail } = model;
-  if (!detail.data) return null;
-  return (
-    <section className="guest-detail-panel">
-      <h3>礼金记录</h3>
-      <Typography.Paragraph type="secondary">
-        有效合计 ¥{yuan(detail.data.giftTotal)} · 仅统计有效登记
-      </Typography.Paragraph>
-      {detail.data.gifts.length ? (
-        detail.data.gifts.map((gift) => (
-          <div className="guest-detail-record" key={gift.id}>
-            <div className="guest-detail-record-head">
-              <strong>¥{yuan(gift.amount)}</strong>
-              <StatusTag tone={gift.voidedAt ? 'inactive' : 'success'}>
-                {gift.voidedAt ? '已作废' : METHOD_LABEL[gift.method]}
-              </StatusTag>
-            </div>
-            <small>
-              礼金 #{gift.id} · {formatDateTime(gift.recordedAt)}
-            </small>
-            {gift.note && <span>{gift.note}</span>}
-            {gift.voidedAt == null && (
-              <Space wrap>
-                <Button
-                  disabled={disabled || detail.isFetching || detail.isError}
-                  onClick={() => model.giftEditor.openEdit(gift)}
-                >
-                  更正礼金
-                </Button>
-                <Button
-                  disabled={disabled}
-                  onClick={() => model.setAction({ entity: 'gift', id: gift.id, action: 'void' })}
-                >
-                  作废礼金
-                </Button>
-              </Space>
-            )}
-          </div>
-        ))
-      ) : (
-        <Typography.Text type="secondary">尚未登记礼金</Typography.Text>
-      )}
     </section>
   );
 }

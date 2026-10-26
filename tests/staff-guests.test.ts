@@ -34,10 +34,10 @@ test('工作人员名单仅返回白名单，同名用编号分组归属和签�
 });
 test('工作人员详情可用且没有凭证、联系方式、私人备注、祝福或礼金汇总', async () => {
   const detail = await data('/1/detail');
-  assert.deepEqual(Object.keys(detail).sort(), ['guest','checkins'].sort());
+  assert.deepEqual(Object.keys(detail).sort(), ['guest','checkins','gifts'].sort());
   assert.deepEqual(Object.keys(detail.checkins[0]).sort(), ['id','status','submittedAt','confirmedAt','actualHeadcount','actualChildrenCount'].sort());
   assert.equal(detail.guest.headcount, 3);
-  assert.doesNotMatch(JSON.stringify(detail), /13812345678|private-token|私人|祝福|备注|50000|gift/i);
+  assert.doesNotMatch(JSON.stringify(detail), /13812345678|private-token|私人|祝福|备注|50000|giftTotal/i);
   assert.equal((await request('/999/detail')).status, 404);
 });
 test('工作人员无法绕过页面访问二维码、海报、导出或写入，未登录被拒绝', async () => {

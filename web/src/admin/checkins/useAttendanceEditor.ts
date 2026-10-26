@@ -9,13 +9,23 @@ import { attendanceValues, type AttendanceValues } from '../components/Attendanc
 import type { AdminOutletContext } from '../AdminLayout';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { adminFeedback } from '../theme';
+type AttendanceRecord = Pick<
+  CheckinDTO,
+  | 'id'
+  | 'guestId'
+  | 'guestName'
+  | 'status'
+  | 'confirmedAt'
+  | 'actualHeadcount'
+  | 'actualChildrenCount'
+>;
 type CorrectionValues = AttendanceValues & { reason: string };
 export function useAttendanceEditor() {
   const me = useCurrentUser();
   const qc = useQueryClient();
   const { registerNavigationGuard } = useOutletContext<AdminOutletContext>();
   const [dirty, setDirty] = useState(false);
-  const [editing, setEditing] = useState<CheckinDTO | null>(null);
+  const [editing, setEditing] = useState<AttendanceRecord | null>(null);
   const [form] = Form.useForm<CorrectionValues>();
   const correction = useMutation({
     mutationFn: (v: CorrectionValues) =>
@@ -30,6 +40,7 @@ export function useAttendanceEditor() {
         'checkins',
         'stats',
         'guest-detail',
+        'staff-guest-detail',
         'record-history',
         'action-preview',
         'review-directory',
@@ -45,15 +56,16 @@ export function useAttendanceEditor() {
       setEditing(null);
     },
   });
-  const openEdit = (r: CheckinDTO) => {
-    if (me.data?.role !== 'admin' || r.status !== 'confirmed') return;
+  const openEdit = (r: AttendanceRecord) => {
+    if (!me.data || r.status !== 'confirmed') return;
     setDirty(false);
     correction.reset();
     setEditing(r);
     form.resetFields();
     form.setFieldsValue({
       actualHeadcountInput: r.actualHeadcount == null ? undefined : String(r.actualHeadcount),
-      actualChildrenInput: r.actualChildrenCount == null ? '0' : String(r.actualChildrenCount),
+      actualChildrenInput:
+        r.actualChildrenCount == null ? undefined : String(r.actualChildrenCount),
     });
   };
   const canLeave = useUnsavedChanges({
@@ -68,7 +80,7 @@ export function useAttendanceEditor() {
     correction.reset();
   };
   const submit = (values: CorrectionValues) => {
-    if (editing?.status === 'confirmed' && me.data?.role === 'admin' && !correction.isPending)
+    if (editing?.status === 'confirmed' && !!me.data && !correction.isPending)
       correction.mutate(values);
   };
   const conflict = correction.error instanceof ApiError && correction.error.status === 409;

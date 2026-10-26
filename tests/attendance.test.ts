@@ -84,14 +84,14 @@ test('确认及补录拒绝缺失、小数、负数、超限、字符串和儿�
   assert.equal((sqlite.prepare('SELECT count(*) n FROM guests WHERE name=?').get('非法补录') as any).n, 0);
 });
 
-test('管理员更正人数保留前后值和原因，过时更正与工作人员修改不能覆盖记录', async () => {
+test('管理员更正人数保留前后值和原因，过时更正不能覆盖记录', async () => {
   const result = await manual(); const id = result.body.data.id;
   const body = { actualHeadcount: 4, actualChildrenCount: 2, expectedHeadcount: 3, expectedChildrenCount: 1, reason: '补到一名儿童' };
-  assert.equal((await request(`/api/checkins/${id}/attendance`, 'PATCH', body, 'staff')).status, 403);
   assert.equal((await request(`/api/checkins/${id}/attendance`, 'PATCH', { ...body, actualChildrenCount: 5 })).status, 400);
   assert.equal((await request(`/api/checkins/${id}/attendance`, 'PATCH', { ...body, reason: ' ' })).status, 400);
   assert.equal((await request(`/api/checkins/${id}/attendance`, 'PATCH', body)).status, 200);
   assert.equal((await stats()).actualHeadcount, 4); assert.equal((await stats()).checkinCount, 1);
+  assert.equal((await request(`/api/checkins/${id}/attendance`, 'PATCH', body, 'staff')).status, 409);
   assert.equal((await request(`/api/checkins/${id}/attendance`, 'PATCH', { ...body, actualHeadcount: 5 })).status, 409);
   const history = (await request(`/api/lifecycle/checkin/${id}/history`)).body.data;
   assert.equal(history.length, 1); assert.equal(history[0].reason, body.reason); assert.equal(history[0].actorName, 'admin');

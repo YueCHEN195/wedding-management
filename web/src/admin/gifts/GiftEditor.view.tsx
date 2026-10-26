@@ -30,7 +30,13 @@ export function GiftEditor({ model }: { model: GiftEditorModel }) {
   return (
     <AdminDrawer
       rootClassName="gift-drawer"
-      title={editing ? `更正礼金 · ${editing.guestName} #${editing.id}` : '新增礼金'}
+      title={
+        editing
+          ? `更正礼金 · ${editing.guestName} #${editing.id}`
+          : model.checkin
+            ? `补登记礼金 · ${model.checkin.guestName} · 签到 #${model.checkin.id}`
+            : '新增礼金'
+      }
       open={creating}
       onClose={() => {
         void close();
@@ -101,7 +107,7 @@ export function GiftEditor({ model }: { model: GiftEditorModel }) {
             ]}
           >
             <Input
-              disabled={!!editing}
+              disabled={!!editing || !!model.checkin}
               onCompositionStart={() => setNameComposing(true)}
               onCompositionEnd={() => setNameComposing(false)}
               maxLength={MAX_NAME_LENGTH}
@@ -110,7 +116,7 @@ export function GiftEditor({ model }: { model: GiftEditorModel }) {
               placeholder="填写实收礼金对应的姓名"
             />
           </Form.Item>
-          <GiftCandidateSelection model={model} />
+          {!model.checkin && <GiftCandidateSelection model={model} />}
           {editing && (
             <p className="gift-helper">
               {editing.guestId != null ? `关联宾客 #${editing.guestId}` : '未关联宾客'}

@@ -10,6 +10,7 @@ export const attendanceReasons = [
   '补记实际到场人数',
   '儿童人数录入有误',
   '同行人数发生变化',
+  '同行家人晚到',
 ];
 export const actionReasons: Record<LifecycleAction, readonly string[]> = {
   archive: ['重复建立档案', '不再使用此档案', '名单整理归档'],

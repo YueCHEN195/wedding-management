@@ -21,7 +21,9 @@ function History({ rows }: { rows: OperationLogDTO[] }) {
                 ? '更正礼金'
                 : r.action === 'attendance'
                   ? '补记／更正到场人数'
-                  : (ACTION_LABEL[r.action as LifecycleAction] ?? r.action)}
+                  : r.action === 'reassign'
+                    ? '纠正关联宾客'
+                    : (ACTION_LABEL[r.action as LifecycleAction] ?? r.action)}
             <br />
             {r.detail && (
               <>

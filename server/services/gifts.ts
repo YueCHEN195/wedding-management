@@ -2,22 +2,29 @@ import { createHash } from 'node:crypto';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { z } from 'zod';
 import { db, sqlite } from '../db/client';
-import { gifts, guests, operationLogs, type GiftRow } from '../db/schema';
+import { checkins, gifts, guests, operationLogs, type GiftRow } from '../db/schema';
 import type { SessionPayload } from '../auth/jwt';
 import { InputError, type giftCreateSchema, type giftPatchSchema } from '../lib/validation';
 import { now } from '../lib/util';
 
 export class GiftEditError extends Error {
-  constructor(public code: 'CONFLICT' | 'VERSION_CONFLICT' | 'NO_CHANGES' | 'IDEMPOTENCY_CONFLICT', message: string) { super(message); }
+  constructor(public code: 'CONFLICT' | 'VERSION_CONFLICT' | 'NO_CHANGES' | 'IDEMPOTENCY_CONFLICT' | 'FORBIDDEN', message: string, public status: 403 | 409 = 409) { super(message); }
 }
-export function createGift(input: z.infer<typeof giftCreateSchema>, actor: SessionPayload) {
+export function createGift(input: z.infer<typeof giftCreateSchema>, actor: SessionPayload, checkinId: number | null = null) {
   const { submissionKey, ...values } = input;
   const hash = (value: string) => createHash('sha256').update(value).digest('hex');
   const submissionKeyHash = hash(`${actor.id}:${submissionKey}`);
   const normalized = { ...values, guestId: values.guestId ?? null };
-  const submissionPayloadHash = hash(JSON.stringify(normalized));
+  const submissionPayloadHash = hash(JSON.stringify(checkinId == null ? normalized : { ...normalized, checkinId }));
   return sqlite
     .transaction(() => {
+      if (checkinId != null) {
+        const checkin = db.select().from(checkins).where(eq(checkins.id, checkinId)).get();
+        if (!checkin || checkin.status !== 'confirmed' || checkin.guestId !== normalized.guestId || checkin.guestName !== normalized.guestName)
+          throw new GiftEditError('CONFLICT', '签到或关联宾客已变化，请重新核对后补登记');
+      } else if (actor.role !== 'admin') {
+        throw new GiftEditError('FORBIDDEN', '工作人员仅可为已确认签到补登记礼金', 403);
+      }
       const previous = db
         .select()
         .from(gifts)
@@ -41,11 +48,11 @@ export function createGift(input: z.infer<typeof giftCreateSchema>, actor: Sessi
           ...normalized,
           submissionKeyHash,
           submissionPayloadHash,
-          checkinId: null,
+          checkinId,
           recordedAt: now(),
         },
         actor,
-        '管理员独立登记实收礼金',
+        checkinId == null ? '管理员独立登记实收礼金' : '现场签到后补登记实收礼金',
       );
     })
     .immediate();
@@ -61,9 +68,15 @@ export function insertGiftWithAudit(values: typeof gifts.$inferInsert, actor: Se
   recordGift('create', null, row, actor, reason);
   return row;
 }
+export function assertGiftAccess(gift: GiftRow | undefined, actor: SessionPayload) {
+  if (actor.role === 'admin') return;
+  if (gift?.checkinId == null || !db.select({ id: checkins.id }).from(checkins).where(eq(checkins.id, gift.checkinId)).get())
+    throw new GiftEditError('FORBIDDEN', '工作人员仅可操作签到关联的礼金', 403);
+}
 export function editGift(id: number, input: z.infer<typeof giftPatchSchema>, actor: SessionPayload) {
   return sqlite.transaction(() => {
     const current = db.select().from(gifts).where(eq(gifts.id, id)).get();
+    assertGiftAccess(current, actor);
     if (!current || current.voidedAt != null) throw new GiftEditError('CONFLICT', '礼金已撤回或不存在，不能编辑，请核对最新记录');
     if (current.version !== input.expectedVersion) throw new GiftEditError('VERSION_CONFLICT', '这笔礼金已被其他操作更新，你的修改尚未保存，请核对最新记录');
     const { expectedVersion, reason, ...patch } = input;
